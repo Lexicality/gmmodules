@@ -4,8 +4,8 @@
 	This code is freely available under the MIT License
 --]]
 
-local setmetatable, pcall, table, error, ErrorNoHalt =
-	  setmetatable, pcall, table, error, ErrorNoHalt or print;
+local setmetatable, pcall, table, pairs, error, ErrorNoHalt =
+	  setmetatable, pcall, table, pairs, error, ErrorNoHalt or print;
 
 local function new(tab, ...)
     local ret = setmetatable({}, tab);
@@ -211,4 +211,5 @@ local deferred = {
 
 
 function Deferred()
+	return new(deferred);
 end

@@ -101,7 +101,7 @@ function dbobj:PrepareQuery(tab)
         error("No query text specified!", 2);
     elseif (not tab.NumArgs) then
         local args = 0;
-        for _ in string.gmatch(tab.Text, '(%%[%%diouXxfFeEgGaAcsb])') do
+        for _ in string.gmatch(tab.Text, '(%%[diouXxfFeEgGaAcsb])') do
             args = args + 1;
         end
         self.NumArgs = args;
@@ -447,7 +447,7 @@ do -- MySQLOO
         return true;
     end
 
-    RegisterDatabaseMethod "MySQLOO" (db);
+    RegisterDatabaseMethod("MySQLOO", db);
 end
 do -- SQLite
     local db = {};
@@ -485,7 +485,7 @@ do -- SQLite
         return true;
     end
 
-    RegisterDatabaseMethod "SQLite" (db);
+    RegisterDatabaseMethod("SQLite", db);
 end
 
 -- Autoselect

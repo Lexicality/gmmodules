@@ -55,7 +55,7 @@ local promise = {
 				if (type(ret[2]) == 'table' and ret[2]._IsPromise) then
 					ret[2]:Then(def.Resolve, def.Reject, def.Notify, def);
 				else
-					def:Resolve(unpack(ret));
+					def:Resolve(unpack(ret, 2));
 				end
 			end
 		else
@@ -72,7 +72,7 @@ local promise = {
 				if (type(ret[2]) == 'table' and ret[2]._IsPromise) then
 					ret[2]:Then(def.Resolve, def.Reject, def.Notify, def);
 				else
-					def:Resolve(unpack(ret));
+					def:Resolve(unpack(ret, 2));
 				end
 			end
 		else
@@ -88,7 +88,7 @@ local promise = {
 					-- Carry on as if that never happened
 					def:Notify(...);
 				else
-					def:Notify( unpack(ret) );
+					def:Notify( unpack(ret, 2) );
 				end
 			end
 		else

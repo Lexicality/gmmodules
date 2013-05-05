@@ -35,8 +35,8 @@ local function bind(what, context)
 end
 
 local function pbind(func)
-	return function()
-		pcall(func);
+	return function(...)
+		pcall(func, ...);
 	end
 end
 
@@ -213,3 +213,5 @@ local deferred = {
 function Deferred()
 	return new(deferred);
 end
+
+return Deferred;

@@ -52,7 +52,7 @@ local promise = {
 					def:Reject(ret[2]);
 					return;
 				end
-				if (ret[2]._IsDeferred) then
+				if (type(ret[2]) == 'table' and ret[2]._IsPromise) then
 					ret[2]:Then(def.Resolve, def.Reject, def.Notify, def);
 				else
 					def:Resolve(unpack(ret));
@@ -69,7 +69,7 @@ local promise = {
 					def:Reject(ret[2]);
 					return;
 				end
-				if (ret[2]._IsDeferred) then
+				if (type(ret[2]) == 'table' and ret[2]._IsPromise) then
 					ret[2]:Then(def.Resolve, def.Reject, def.Notify, def);
 				else
 					def:Resolve(unpack(ret));

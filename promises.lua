@@ -109,6 +109,7 @@ local promise = {
 		else
 			table.insert(self._succs, succ);
 		end
+		return self;
 	end;
 	Fail = function(self, fail, nobind)
 		if (not nobind) then
@@ -119,6 +120,7 @@ local promise = {
 		else
 			table.insert(self._fails, fail);
 		end
+		return self;
 	end;
 	Progress = function(self, prog, nobind)
 		if (not nobind) then
@@ -130,6 +132,7 @@ local promise = {
 				prog(unpack(d));
 			end
 		end
+		return self;
 	end;
 	Always = function(self, alwy, nobind)
 		if (not nobind) then
@@ -140,6 +143,7 @@ local promise = {
 		else
 			table.insert(self._alwys, alwy)
 		end
+		return self;
 	end;
 
 	_init = function(self)
@@ -165,6 +169,7 @@ local deferred = {
 		for _, f in pairs(p._alwys) do
 			f(...);
 		end
+		return self;
 	end;
 
 	Reject = function(self, ...)
@@ -180,6 +185,7 @@ local deferred = {
 		for _, f in pairs(p._alwys) do
 			f(...);
 		end
+		return self;
 	end;
 
 	Notify = function(self, ...)
@@ -192,6 +198,7 @@ local deferred = {
 		for _, f in pairs(p._progs) do
 			f(...);
 		end
+		return self;
 	end;
 
 	_init = function(self)
@@ -203,10 +210,10 @@ local deferred = {
 	-- Proxies
 	_IsPromise = true;
 	Then = function(self, ...) return self._promise:Then(...); end;
-	Done = function(self, ...) self._promise:Done(...); end;
-	Fail = function(self, ...) self._promise:Fail(...); end;
-	Progress = function(self, ...) self._promise:Progress(...); end;
-	Always = function(self, ...) self._promise:Always(...); end;
+	Done = function(self, ...) self._promise:Done(...); return self; end;
+	Fail = function(self, ...) self._promise:Fail(...); return self; end;
+	Progress = function(self, ...) self._promise:Progress(...); return self; end;
+	Always = function(self, ...) self._promise:Always(...); return self; end;
 };
 
 

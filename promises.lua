@@ -25,7 +25,10 @@ end
 
 local function pbind(func)
 	return function(...)
-		pcall(func, ...);
+		local r, e = pcall(func, ...);
+		if (not r) then
+			ErrorNoHalt('Callback failed: ', e, "\n");
+		end
 	end
 end
 

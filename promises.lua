@@ -12,25 +12,14 @@ local function new(tab, ...)
     ret:_init(...);
     return ret;
 end
-local function contextcall(what, context, ...)
-	if (context) then
-		return what(context, ...);
-	else
-		return what(...);
-	end
-end
-
-local function contextpcall(what, context, ...)
-	if (context) then
-		return pcall(what, context, ...);
-	else
-		return pcall(what, ...);
-	end
-end
 
 local function bind(what, context)
 	return function(...)
-		return contextcall(what, context, ...);
+		if (context) then
+			return what(context, ...);
+		else
+			return what(...);
+		end
 	end
 end
 
@@ -42,12 +31,12 @@ end
 
 local promise = {
 	_IsPromise = true;
-	Then = function(self, succ, fail, prog, ctx)
+	Then = function(self, succ, fail, prog)
 		local def = Deferred();
 		if (type(succ) == 'function') then
 			local s = succ;
 			succ = function(...)
-				local ret = { contextpcall(s, ctx, ...) };
+				local ret = { pcall(s, ...) };
 				if (not ret[1]) then
 					def:Reject(ret[2]);
 					return;
@@ -67,7 +56,7 @@ local promise = {
 		if (type(fail) == 'function') then
 			local f = fail;
 			fail = function(...)
-				local ret = { contextpcall(f, ctx, ...) };
+				local ret = { pcall(f, ...) };
 				if (not ret[1]) then
 					def:Reject(ret[2]);
 					return;
@@ -88,7 +77,7 @@ local promise = {
 		if (type(prog) == 'function') then
 			local p = prog;
 			prog = function(...)
-				local ret = { contextpcall(p, ctx, ...) };
+				local ret = { pcall(p, ...) };
 				if (not ret[1]) then
 					ErrorNoHalt("Progress handler failed: ", ret[2], "\n");
 					-- Carry on as if that never happened

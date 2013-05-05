@@ -53,7 +53,10 @@ local promise = {
 					return;
 				end
 				if (type(ret[2]) == 'table' and ret[2]._IsPromise) then
-					ret[2]:Then(def.Resolve, def.Reject, def.Notify, def);
+					local r = ret[2];
+					r:Done(bind(def.Resolve, def),    true);
+					r:Fail(bind(def.Reject, def),     true);
+					r:Progress(bind(def.Notify, def), true);
 				else
 					def:Resolve(unpack(ret, 2));
 				end
@@ -70,7 +73,10 @@ local promise = {
 					return;
 				end
 				if (type(ret[2]) == 'table' and ret[2]._IsPromise) then
-					ret[2]:Then(def.Resolve, def.Reject, def.Notify, def);
+					local r = ret[2];
+					r:Done(bind(def.Resolve, def),    true);
+					r:Fail(bind(def.Reject, def),     true);
+					r:Progress(bind(def.Notify, def), true);
 				else
 					def:Resolve(unpack(ret, 2));
 				end

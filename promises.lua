@@ -8,7 +8,7 @@ local setmetatable, pcall, table, pairs, error, ErrorNoHalt =
 	  setmetatable, pcall, table, pairs, error, ErrorNoHalt or print;
 
 local function new(tab, ...)
-    local ret = setmetatable({}, tab);
+    local ret = setmetatable({}, {__index=tab});
     ret:_init(...);
     return ret;
 end

@@ -23,7 +23,10 @@ local sqlite = sql;
 local mysqloo = mysqloo;
 local tmysql = tmysql;
 
-local error, type, unpack, ipairs, system = error, type, unpack, ipairs, system;
+local Deferred = require 'promises';
+
+local error, type, unpack, ipairs, system =
+      error, type, unpack, ipairs, system;
 local string = string;
 
 module("database");
@@ -32,7 +35,7 @@ local queryobj = {};
 local dbobj = {};
 
 local function new(tab, ...)
-    local ret = setmetatable({}, tab);
+    local ret = setmetatable({}, {__index=tab});
     ret:Init(...);
     return ret;
 end
@@ -371,42 +374,50 @@ do -- TMySQL
     RegisterDatabaseMethod("TMySQL", db);
 end
 do -- MySQLOO
-    local mysqlooyes, mysqloono, mysqloodata;
-    function mysqlooyes(query)
-        callback(query.datachunk, "SuccessCallback", query:GetData());
+    local mysqlooyes, mysqloono, mysqlooack, mysqloodata;
+    function mysqlooyes(query, results)
+        query.deferred:Resolve(query.deferred, results);
     end
 
     function mysqloono(query, err)
-        callback(query.datachunk, "FailureCallback", err);
+        query.deferred:Reject(query.deferred, err);
+    end
+
+    function mysqlooack(query)
+        mysqloono(query, 'Aborted!');
     end
 
     function mysqloodata(query, result)
-        callback(query.datachunk, "PerDataCallback", result);
+        query.deferred:Notify(query.deferred, result);
     end
 
-    local mdb;
     local db = {};
 
-    function db.Connect(tab, onConnected, onConnectionFailed)
-        if (mdb) then
-            db.Disconnect();
+    function db:Connect(cdata, deferred)
+        if (self._db) then
+            self:Disconnect();
         end
-        mdb = mysqloo.connect(tab.Hostname, tab.Username, tab.Password, tab.Database, tab.Port);
-        mdb.SuccessCallback = tab.SuccessCallback;
-        mdb.FailureCallback = tab.FailureCallback;
-        mdb.onConnected        = onConnected;
-        mdb.onConnectionFailed = onConnectionFailed;
-        mdb:Connect();
+        self._db = mysqloo.connect(cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port);
+        self._db.onConnected = function(db)
+            deferred:Resolve(deferred, self);
+        end
+        self._db.onConnectionFailed = function(db, err)
+            deferred:Reject(deferred, self, err);
+        end
+        self._db:connect();
     end
 
-    function db.Disconnect()
-        if (mdb) then
-            mdb:AbortAllQueries();
-            mdb = nil;
+    function db:Disconnect()
+        if (self._db) then
+            self._db:AbortAllQueries();
+            self._db = nil;
         end
     end
 
-    function db.Query(text, datachunk)
+    function db:Query(text, deferred)
+        if (not self._db) then
+            deferred:Reject(deferred, 'No DB!');
+            
         local q = mdb:query(text);
         q.onFailure = mysqloono;
         q.onSuccess = mysqlooyes;
@@ -417,14 +428,14 @@ do -- MySQLOO
         table.insert(activeQueries, q);
     end
 
-    function db.Escape(text)
+    function db:Escape(text)
         if (not mdb) then
             error("There is no database open to perform this act!", 2);
         end
         return mdb:escape(text);
     end
 
-    function db.IsConnected()
+    function db:IsConnected()
         if (not mdb) then
             return false;
         end
@@ -439,7 +450,7 @@ do -- MySQLOO
         return false;
     end
 
-    function db.CanSelect()
+    function db:CanSelect()
         mysqloo = mysqloo or checkmodule('mysqloo');
         if (not mysqloo) then
             return false, "MySQLOO is not available!";
@@ -452,36 +463,34 @@ end
 do -- SQLite
     local db = {};
 
-    function db.Connect(tab, onConnected, onConnectionFailed)
-        onConnected();
+    function db:Connect(cdata, deferred)
+        deferred:Resolve(deferred, self);
     end
 
-    function db.Disconnect()
+    function db:Disconnect()
     end
 
-    function db.Query(text, datachunk)
+    function db:Query(text, deferred)
         local results = sqlite.Query(text);
         if (results) then
-            if (datachunk.PerDataCallback) then
-                for _, result in ipairs(results) do
-                    callback(datachunk, "PerDataCallback", result);
-                end
+            for _, result in ipairs(results) do
+                deferred:Notify(deferred, result);
             end
-            callback(datachunk, "SuccessCallback", results);
+            deferred:Resolve(deferred, results);
         else
-            callback(datachunk, "FailureCallback", sqlite.LastError());
+            deferred:Reject(deferred, sqlite.LastError());
         end
     end
 
-    function db.Escape(text)
+    function db:Escape(text)
         return sqlite.SQLStr(text);
     end
 
-    function db.IsConnected()
+    function db:IsConnected()
         return true;
     end
 
-    function db.CanSelect()
+    function db:CanSelect()
         return true;
     end
 

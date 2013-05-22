@@ -204,17 +204,17 @@ local function onConnectionFailed(tab, err)
 end
 
 --[[
-database.Connect {
+database.Connect{
     Hostname = "foo";
     Username = "bar";
     Password = "baz";
     Database = "quux";
     Port = 1337;
-    ConnectCallback = function(db) end;
-    FailureCallback = function(err) error(err, 0); end;
     DBMethod = "mysqloo";
     EnableSQLite = false;
-};
+}
+:Done(function(_, db) end)
+:Fail(function(_, err) error(err, 0); end);
 --]]
 function Connect(tab)
     if (not type(tab) == "table") then
@@ -237,35 +237,22 @@ function Connect(tab)
             if (method.CanSelect() and tab.EnableSQLite or name ~= "sqlite") then
                 db = method;
                 break;
-            end
+            en
         end
         if (not db) then
             error("No valid database methods available!", 2);
         end
     end
 
+    db = setmetatable({},{__index=db});
 
-
-    return db.Connect(tab, onConnected, onConnectionFailed);
+    return db:Connect(tab);
 end
 
 local function req(tab, name)
     if (not tab[name]) then
-        error("You're missing '" .. name .. "' from the database methods!", 4);
+        error("You're missing '" .. name .. "' from the database methods!", 3);
     end
-end
-local function regdb(tab)
-    if (not tab.Name) then
-        error("No database method name specified!", 3);
-    end
-    req(tab, "Connect");
-    req(tab, "Disconnect");
-    req(tab, "IsConnected");
-    req(tab, "Escape");
-    req(tab, "Query");
-    req(tab, "CanSelect");
-    registeredDatabaseMethods[string.lower(tab.Name)] = tab;
-    return true;
 end
 
 function RegisterDatabaseMethod(name, tab)
@@ -273,10 +260,18 @@ function RegisterDatabaseMethod(name, tab)
     if (t == "table") then
         return regdb(name);
     elseif (t ~= "string") then
-        error("Expected a string to database.RegisterDatabaseMethod!", 2);
+        error("Expected a string for argument 1 of database.RegisterDatabaseMethod!", 2);
+    elseif ( type(tab) ~= "table" ) then
+        error("Expected a table for argument 2 of database.RegisterDatabaseMethod!", 2);
     end
     tab.Name = name;
-    return regdb(tab);
+    req(tab, "Connect");
+    req(tab, "Disconnect");
+    req(tab, "IsConnected");
+    req(tab, "Escape");
+    req(tab, "Query");
+    req(tab, "CanSelect");
+    registeredDatabaseMethods[string.lower(tab.Name)] = tab;
 end
 
 function IsValidDBMethod(name)
@@ -313,52 +308,54 @@ local function callback(datachunk, name, arg)
     contextcall(datachunk[name], datachunk.Context, arg, args and unpack(args));
 end
 do -- TMySQL
-    local function mcallback(datachunk, results, success, err)
+    local function mcallback(deferred, results, success, err)
         if (success) then
-            if (datachunk.PerDataCallback) then
-                for _, result in ipairs(results) do
-                    callback(datachunk, "PerDataCallback", result);
-                end
+            for _, result in ipairs(results) do
+                deferred:Notify(result);
             end
-            callback(datachunk, "SuccessCallback", results);
+            deferred:Resolve(results);
         else
-            callback(datachunk, "FailureCallback", err);
+            deferred:Reject(err);
         end
     end
 
     local db = {};
-    local mdb;
 
-    function db.Connect(tab, onConnected, onConnectionFailed)
-        if (mdb) then
-            db.Disconnect();
+    function db:Connect(tab)
+        local deferred = Deferred();
+        if (self._db) then
+            self:Disconnect();
         end
         local err;
-        mdb, err = tmysql.initialize(tab.Hostname, tab.Username, tab.Password, tab.Database, tab.Port);
-        if (mdb) then
-            onConnected(tab);
+        self._db, err = tmysql.initialize(tab.Hostname, tab.Username, tab.Password, tab.Database, tab.Port);
+        if (self._db) then
+            deferred:Resolve(self);
         else
-            onConnectionFailed(tab, string.gsub(err, "^Error connecting to DB: ", ""));
+            deferred:Reject( string.gsub(err, "^Error connecting to DB: ", "") );
+        end
+        return deferred:Promise();
+    end
+
+    function db:Disconnect()
+        if (self._db) then
+            self._db:Disconnect();
         end
     end
 
-    function db.Disconnect()
-        if (mdb) then
-            mdb:Disconnect();
+    function db:Query(text)
+        if (not self._db) then
+            error("Cannot query without a database connected!");
         end
+        local deferred = Deferred();
+        self._db:Query(text, mcallback, 1, deferred);
+        return deferred:Promise();
     end
 
-    function db.Query(text, datachunk)
-        if (mdb) then
-            mdb:Query(text, mcallback, 1, datachunk);
-        end
-    end
-
-    function db.Escape(text)
+    function db:Escape(text)
         return tmysql.escape(text);
     end
 
-    function db.IsConnected()
+    function db:IsConnected()
         -- Probably true
         return true;
     end
@@ -376,11 +373,11 @@ end
 do -- MySQLOO
     local mysqlooyes, mysqloono, mysqlooack, mysqloodata;
     function mysqlooyes(query, results)
-        query.deferred:Resolve(query.deferred, results);
+        query.deferred:Resolve(results);
     end
 
     function mysqloono(query, err)
-        query.deferred:Reject(query.deferred, err);
+        query.deferred:Reject(err);
     end
 
     function mysqlooack(query)
@@ -388,23 +385,25 @@ do -- MySQLOO
     end
 
     function mysqloodata(query, result)
-        query.deferred:Notify(query.deferred, result);
+        query.deferred:Notify(result);
     end
 
     local db = {};
 
-    function db:Connect(cdata, deferred)
+    function db:Connect(cdata)
+        local deferred = Deferred();
         if (self._db) then
             self:Disconnect();
         end
         self._db = mysqloo.connect(cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port);
         self._db.onConnected = function(db)
-            deferred:Resolve(deferred, self);
+            deferred:Resolve(self);
         end
         self._db.onConnectionFailed = function(db, err)
-            deferred:Reject(deferred, self, err);
+            deferred:Reject(self, err);
         end
         self._db:connect();
+        return deferred:Promise();
     end
 
     function db:Disconnect()
@@ -414,32 +413,34 @@ do -- MySQLOO
         end
     end
 
-    function db:Query(text, deferred)
+    function db:Query(text)
         if (not self._db) then
-            deferred:Reject(deferred, 'No DB!');
-            
+            error("Cannot query without a database connected!");
+        end
+        local deferred = Deferred();
         local q = mdb:query(text);
-        q.onFailure = mysqloono;
+        q.onError   = mysqloono;
         q.onSuccess = mysqlooyes;
         q.onData    = mysqloodata;
-        q.datachunk = datachunk;
+        q.deferred  = deferred;
         q:start();
         -- I can't remember if queries are light userdata or not.
         table.insert(activeQueries, q);
+        return deferred:Promise();
     end
 
     function db:Escape(text)
-        if (not mdb) then
+        if (not self._db) then
             error("There is no database open to perform this act!", 2);
         end
-        return mdb:escape(text);
+        return self._db:escape(text);
     end
 
     function db:IsConnected()
-        if (not mdb) then
+        if (not self._db) then
             return false;
         end
-        local status = mdb:status();
+        local status = self._db:status();
         if (status == mysqloo.DATABASE_CONNECTED) then
             return true;
         end
@@ -450,7 +451,7 @@ do -- MySQLOO
         return false;
     end
 
-    function db:CanSelect()
+    function db.CanSelect()
         mysqloo = mysqloo or checkmodule('mysqloo');
         if (not mysqloo) then
             return false, "MySQLOO is not available!";
@@ -463,23 +464,27 @@ end
 do -- SQLite
     local db = {};
 
-    function db:Connect(cdata, deferred)
-        deferred:Resolve(deferred, self);
+    function db:Connect(cdata)
+        local deferred = Deferred();
+        deferred:Resolve(self);
+        return deferred:Promise();
     end
 
     function db:Disconnect()
     end
 
-    function db:Query(text, deferred)
+    function db:Query(text)
+        local deferred = Deferred();
         local results = sqlite.Query(text);
         if (results) then
             for _, result in ipairs(results) do
-                deferred:Notify(deferred, result);
+                deferred:Notify(result);
             end
-            deferred:Resolve(deferred, results);
+            deferred:Resolve(results);
         else
-            deferred:Reject(deferred, sqlite.LastError());
+            deferred:Reject(sqlite.LastError());
         end
+        return deferred:Promise();
     end
 
     function db:Escape(text)
@@ -490,7 +495,7 @@ do -- SQLite
         return true;
     end
 
-    function db:CanSelect()
+    function db.CanSelect()
         return true;
     end
 

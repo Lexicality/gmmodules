@@ -327,7 +327,7 @@ function NewDatabase( connection )
     req( connection, "Database" );
     connection.Port = connection.Port or 3306;
     connection.Port = tonumber( connection.Port );
-    req( connection, "Port"    );
+    req( connection, "Port" );
     return new( Database, connection );
 end
 

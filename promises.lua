@@ -4,8 +4,8 @@
 	This code is freely available under the MIT License
 --]]
 
-local setmetatable, pcall, table, pairs, error, ErrorNoHalt =
-	  setmetatable, pcall, table, pairs, error, ErrorNoHalt or print;
+local setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHalt =
+	  setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHalt or print;
 
 local function new(tab, ...)
     local ret = setmetatable({}, {__index=tab});
@@ -157,7 +157,7 @@ local deferred = {
 	Resolve = function(self, ...)
 		local p = self._promise;
 		if (p._state ~= 'pending') then
-			error("Tried to resolve an already " .. (state == "done" and "resolved" or "rejected") .. " deferred!", 2);
+			error("Tried to resolve an already " .. (p._state == "done" and "resolved" or "rejected") .. " deferred!", 2);
 		end
 		p._state = 'done';
 		p._res = {...};
@@ -173,7 +173,7 @@ local deferred = {
 	Reject = function(self, ...)
 		local p = self._promise;
 		if (p._state ~= 'pending') then
-			error("Tried to reject an already " .. (state == "done" and "resolved" or "rejected") .. " deferred!", 2);
+			error("Tried to reject an already " .. (p._state == "done" and "resolved" or "rejected") .. " deferred!", 2);
 		end
 		p._state = 'fail';
 		p._res = {...};
@@ -189,7 +189,7 @@ local deferred = {
 	Notify = function(self, ...)
 		local p = self._promise;
 		if (p._state ~= 'pending') then
-			error("Tried to notify an already " .. (state == "done" and "resolved" or "rejected") .. " deferred!", 2);
+			error("Tried to notify an already " .. (p._state == "done" and "resolved" or "rejected") .. " deferred!", 2);
 		end
 		p._progd = p._progd or {};
 		table.insert(p._progd, {...});

@@ -24,7 +24,7 @@ local error, type, unpack, pairs, ipairs, tonumber, setmetatable, require, strin
       error, type, unpack, pairs, ipairs, tonumber, setmetatable, require, string;
 -- GLua
 local file, system, SERVER, ErrorNoHalt =
-      file, system, SERVER, ErrorNoHalt or print;
+      file, system, SERVER, ErrorNoHalt;
 
 local Deferred = require 'promises';
 -- Databases

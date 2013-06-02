@@ -32,10 +32,15 @@ local sqlite   = sql;
 local mysqloo  = mysqloo;
 local tmysql   = tmysql;
 
+---
+-- The Universal Database Module is an attempt to provide a single rational interface
+--  that allows Developers to run SQL commands without caring which MySQL module the server has installed.
+-- It also has client-side prepared queries which is nice.
+
 module( "database" );
 
-local queryobj = {};
-local dbobj = {};
+local PreparedQuery = {};
+local Database = {};
 
 local function new( tab, ... )
     local ret = setmetatable( {}, {__index=tab} );
@@ -58,7 +63,7 @@ end
 -- DBOBJ
 --
 
-setmetatable( dbobj, { __index = function( self, key )
+setmetatable( Database, { __index = function( self, key )
     -- Forward all the generic db methods down the line
     if ( self._db and self._db[ key ] ) then
         if ( string.sub( key, 1,1 ) == '_'
@@ -71,7 +76,7 @@ setmetatable( dbobj, { __index = function( self, key )
     end
 end} );
 
-function dbobj:Init( tab )
+function Database:Init( tab )
     self._conargs =  tab;
     local db = tab.DBMethod;
     if ( db ) then
@@ -95,7 +100,7 @@ end
 ---
 -- Connects with the stored args
 -- @return Promise object for the DB connection
-function dbobj:Connect()
+function Database:Connect()
     return self._db:Connect( self._conargs, self )
         :Then( function( _ ) return self; end ) -- Replace the dbobject with ourself
         :Fail( connectionFail ); -- Always thrown an errmsg
@@ -109,12 +114,12 @@ end
 -- Runs a query
 -- @param text The query to run
 -- @return A promise object for the query's result
-function dbobj:Query( text )
+function Database:Query( text )
     return self._db:Query( text ):Fail(queryFail);
 end
 
 --[[
-dbobj:PrepareQuery({
+Database:PrepareQuery({
     Text = "Query Text";
     SuccessCallback = function( context, resultset, ... ) end;
     FailureCallback = function( context, err, ... ) end;
@@ -127,12 +132,12 @@ dbobj:PrepareQuery({
 -- Prepares a query for future runnage with placeholders
 -- @param text The querytext, complete with sprintf placeholders
 -- @return A prepared query object
-function dbobj:PrepareQuery( text )
+function Database:PrepareQuery( text )
     if ( not text ) then
         error( "No query text specified!", 2 );
     end
     local _, narg = string.gsub( text, '(%%[diouXxfFeEgGaAcsb])', '' );
-    return new( queryobj, {
+    return new( PreparedQuery, {
         Text    = text,
         DB      = self,
         NumArgs = narg;
@@ -143,33 +148,37 @@ end
 -- QueryOBJ
 --
 
-function queryobj:Init( qargs )
+function PreparedQuery:Init( qargs )
     self._db     = qargs.DB;
     self.Text    = qargs.Text;
     self.NumArgs = qargs.NumArgs;
 end
 
-function queryobj:SetCallbacks( tab, context )
+function PreparedQuery:SetCallbacks( tab, context )
     self._cDone = bind( tab.Done, context );
     self._cFail = bind( tab.Fail, context );
     self._cProg = bind( tab.Progress, context );
 end
 
-function queryobj:SetCallbackArgs( ... )
+function PreparedQuery:SetCallbackArgs( ... )
     self._callbackArgs = {...};
     if ( #self._callbackArgs == 0 ) then
         self._callbackArgs = nil;
     end
 end
 
-function queryobj:Prepare( ... )
+function PreparedQuery:Prepare( ... )
     if ( self.NumArgs == 0 ) then
         return;
     end
     self._preped = true;
-    local nargs = #{...};
+    local args = {...}:
+    local nargs = #args;
     if ( nargs < self.NumArgs ) then
-        error( "Argument count missmatch! Expected " .. self.NumArgs .. " received " .. nargs .. "!", 2 );
+        error( "Argument count missmatch! Expected " .. self.NumArgs .. " but only received " .. nargs .. "!", 2 );
+    end
+    for i, arg in pairs(args) do
+        args[i] = self._db:Escape(arg);
     end
     self._prepedText = string.format( self.Text, ... );
 end
@@ -184,7 +193,7 @@ local function bindCArgs( func, cargs )
     end
 end
 
-function queryobj:Run()
+function PreparedQuery:Run()
     local text;
     if ( self.NumArgs == 0 ) then
         text = self.Text;
@@ -248,7 +257,7 @@ function NewDatabase( tab )
     tab.Port = tab.Port or 3306;
     tab.Port = tonumber( tab.Port );
     req( tab, "Port"    );
-    return new( dbobj, tab );
+    return new( Database, tab );
 end
 
 ---

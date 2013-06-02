@@ -167,7 +167,7 @@ end
 -- Forwarded functions
 
 ---
--- Nukes the database connection and any queries currently running. Generally advisable not to call this
+-- Nukes the database connection with an undefined effect on any queries currently running. It's generally advisable not to call this
 -- @name Database:Disconnect
 -- @class function
 Database.Disconnect = nil;
@@ -202,7 +202,7 @@ function PreparedQuery:Init( qargs )
 end
 
 ---
--- Set persistant callbacks to be called for every invocation.<br />
+-- Set persistant callbacks to be called for every invocation. <br />
 -- The callbacks should be of the form of function( [context,] result [, arg1, arg2, ...] ) where arg1+ are arguments passed to SetCallbackArgs
 -- @see PreparedQuery:SetCallbackArgs
 -- @usage <pre>

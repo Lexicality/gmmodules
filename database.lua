@@ -19,19 +19,18 @@
 --]]
 
 
-local error, type, unpack, pairs, ipairs, tonumber, setmetatable, require =
-      error, type, unpack, pairs, ipairs, tonumber, setmetatable, require;
-local ErrorNoHalt =
-      ErrorNoHalt;
-local string, file, system =
-      string, file, system;
+-- Lua
+local error, type, unpack, pairs, ipairs, tonumber, setmetatable, require, string =
+      error, type, unpack, pairs, ipairs, tonumber, setmetatable, require, string;
+-- GLua
+local file, system, SERVER, ErrorNoHalt =
+      file, system, SERVER, ErrorNoHalt or print;
 
+local Deferred = require 'promises';
+-- Databases
 local sqlite   = sql;
 local mysqloo  = mysqloo;
 local tmysql   = tmysql;
-local Deferred = require 'promises';
-local _G       = _G;
-local SERVER   = SERVER;
 
 module( "database" );
 
@@ -98,7 +97,7 @@ end
 -- @return Promise object for the DB connection
 function dbobj:Connect()
     return self._db:Connect( self._conargs, self )
-        :Then( function( dbobj ) return self; end ) -- Replace the dbobject with ourself
+        :Then( function( _ ) return self; end ) -- Replace the dbobject with ourself
         :Fail( connectionFail ); -- Always thrown an errmsg
 end
 
@@ -436,10 +435,10 @@ do -- MySQLOO
             self:Disconnect();
         end
         self._db = mysqloo.connect( cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port );
-        self._db.onConnected = function( db )
+        self._db.onConnected = function( _ )
             deferred:Resolve( self );
         end
-        self._db.onConnectionFailed = function( db, err )
+        self._db.onConnectionFailed = function( _, err )
             deferred:Reject( self, err );
         end
         self._db:connect();
@@ -509,7 +508,7 @@ end
 do -- SQLite
     local db = {};
 
-    function db:Connect( cdata )
+    function db:Connect( _ )
         local deferred = Deferred();
         deferred:Resolve( self );
         return deferred:Promise();

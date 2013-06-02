@@ -510,14 +510,25 @@ do -- MySQLOO
 
     local db = {};
 
+    function db:Init()
+        self._queue = {};
+    end
+
     function db:Connect( cdata )
-        local deferred = Deferred();
         if ( self._db ) then
             self:Disconnect();
         end
         self._db = mysqloo.connect( cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port );
+        return self._connect();
+    end
+    function db:_connect()
+        local deferred = Deferred();
         self._db.onConnected = function( _ )
             deferred:Resolve( self );
+            for _, q in pairs( self._queue ) do
+                self:Query( q.text, q.deferred );
+            end
+            self._queue = {};
         end
         self._db.onConnectionFailed = function( _, err )
             deferred:Reject( self, err );
@@ -528,23 +539,44 @@ do -- MySQLOO
 
     function db:Disconnect()
         if ( self._db ) then
-            self._db:AbortAllQueries();
-            self._db = nil;
+            local db = self._db;
+            self._db = nil; -- Make sure this is nil /FIRST/ so any aborting queries don't try to restart it
+            db:AbortAllQueries();
         end
     end
 
-    function db:Query( text )
+    function db:qfail( errmsg, text )
+        local deferred = Deferred();
+        if ( self._db ) then
+            local status = self._db:status();
+            -- DB is fine - you just fucked up.
+            if ( status == mysqloo.DATABASE_CONNECTED ) then
+                return deferred:Reject( errmsg );
+            -- DB fucked up, whoops
+            elseif ( status == mysqloo.DATABASE_INTERNAL_ERROR ) then
+                ErrorNoHalt( "The database has suffered an internal error!\n" );
+                self:Connect(); -- Full restart the db
+            -- DB timed out
+            elseif ( status ~= mysqloo.DATABASE_CONNECTING ) then
+                self:_connect(); -- Kick the connection up the butt
+            end
+        end
+        table.insert( self._queue, { text = text, deferred = deferred } );
+        return deferred:Promise();
+    end
+
+    function db:Query( text, deferred )
         if ( not self._db ) then
             error( "Cannot query without a database connected!" );
         end
-        local deferred = Deferred();
+        deferred = deferred or Deferred();
         local q = self._db:query( text );
         q.onError   = mysqloono;
         q.onSuccess = mysqlooyes;
         q.onData    = mysqloodata;
         q.deferred  = deferred;
         q:start();
-        -- TODO: Autoreconnect on disconnection w/ queued queries etc etc
+        deferred:Then(nil, function( errmsg ) self:qfail( errmsg, text ) end);
         -- I can't remember if queries are light userdata or not. If they are, this will break.
         -- table.insert( activeQueries, q );
         return deferred:Promise();
@@ -552,7 +584,7 @@ do -- MySQLOO
 
     function db:Escape( text )
         if ( not self._db ) then
-            error( "There is no database open to perform this act!", 2 );
+            error( "There is no database open to do this!" );
         end
         return self._db:escape( text );
     end

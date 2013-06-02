@@ -3,7 +3,7 @@
     Copyright (c) 2013 Lex Robinson
 
     Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
-    associated documentation files (the "Software"), to deal in the Software without restriction,
+    associated documentation files ( the "Software" ), to deal in the Software without restriction,
     including without limitation the rights to use, copy, modify, merge, publish, distribute,
     sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
     furnished to do so, subject to the following conditions:
@@ -18,32 +18,40 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 --]]
 
-local _G = _G;
-local sqlite = sql;
-local mysqloo = mysqloo;
-local tmysql = tmysql;
 
+local error, type, unpack, pairs, ipairs, tonumber, setmetatable, require =
+      error, type, unpack, pairs, ipairs, tonumber, setmetatable, require;
+local ErrorNoHalt =
+      ErrorNoHalt;
+local string, file, system =
+      string, file, system;
+
+local sqlite   = sql;
+local mysqloo  = mysqloo;
+local tmysql   = tmysql;
 local Deferred = require 'promises';
+local _G       = _G;
+local SERVER   = SERVER;
 
-local error, type, unpack, ipairs, system =
-      error, type, unpack, ipairs, system;
-local string = string;
-
-module("database");
+module( "database" );
 
 local queryobj = {};
 local dbobj = {};
 
-local function new(tab, ...)
-    local ret = setmetatable({}, {__index=tab});
-    ret:Init(...);
+local function new( tab, ... )
+    local ret = setmetatable( {}, {__index=tab} );
+    if ( ret.Init ) then
+        ret:Init( ... );
+    end
     return ret;
 end
-local function contextcall(what, context, ...)
-    if (context) then
-        what(context, ...);
+local function bind( func, self )
+    if ( not func ) then
+        return;
+    elseif ( self ) then
+        return function( ... ) return func( self, ... ); end
     else
-        what(...);
+        return func;
     end
 end
 
@@ -51,460 +59,497 @@ end
 -- DBOBJ
 --
 
-setmetatable(dbobj, { __index = function(self, key)
-    -- A bit messy but hey
-    if (key == 'Connect') then
-        return nil;
+setmetatable( dbobj, { __index = function( self, key )
     -- Forward all the generic db methods down the line
-    elseif (self._db and self._db[key]) then
-        if (string.sub(key, 1,1) == '_' or type(self._db) ~= "function") then
+    if ( self._db and self._db[ key ] ) then
+        if ( string.sub( key, 1,1 ) == '_'
+         or type( self._db ) ~= "function" ) then
             return nil;
         end
-        return function(self, ...)
-            return self._db[key](self._db, ...);
+        return function( self, ... )
+            return self._db[ key ]( self._db, ... );
         end
     end
-end});
+end} );
 
-function dbobj:Init(db, connectionargs)
-    self._db = db;
-    self._conargs = connectionargs;
-    self._context = connectionargs.Context;
-    self.OnConnected = connectionargs.OnConnected;
-    self.OnConnectionFailed = connectionargs.OnConnectionFailed;
-end
-
-function dbobj:Reconnect()
-    self._db:Connect(self._conargs, self);
-end
-
-function dbobj:_onConnected()
-    if (self.OnConnected) then
-        contextcall(self.OnConnected, self._context, self);
-    end
-end
-function dbobj:_onConnectionFailed(errmsg)
-    if (self.OnConnectionFailed) then
-        contextcall(self.OnConnectionFailed, self._context, self, errmsg);
+function dbobj:Init( tab )
+    self._conargs =  tab;
+    local db = tab.DBMethod;
+    if ( db ) then
+        local success, errmsg = IsValidDBMethod( db );
+        if ( not success ) then
+            error( "Cannot use database method '" .. db .. "': " .. errmsg, 4 );
+        end
     else
-        error("Could not connect to the database: " .. err, 0);
+        db = FindFirstAvailableDBMethod( tab.EnableSQLite );
+        if ( not db ) then
+            error( "No valid database methods available!", 4 );
+        end
     end
+    self._db = GetNewDBMethod( db );
+end
+
+local function connectionFail( errmsg )
+    ErrorNoHalt( "Could not connect to the database: ", errmsg, "\n" );
+end
+
+---
+-- Connects with the stored args
+-- @return Promise object for the DB connection
+function dbobj:Connect()
+    return self._db:Connect( self._conargs, self )
+        :Then( function( dbobj ) return self; end ) -- Replace the dbobject with ourself
+        :Fail( connectionFail ); -- Always thrown an errmsg
+end
+
+local function queryFail( errmsg )
+    ErrorNoHalt( "Query failed: ", errmsg, "\n" )
+end
+
+---
+-- Runs a query
+-- @param text The query to run
+-- @return A promise object for the query's result
+function dbobj:Query( text )
+    return self._db:Query( text ):Fail(queryFail);
 end
 
 --[[
 dbobj:PrepareQuery({
     Text = "Query Text";
-    SuccessCallback = function(resultset, ...) end;
-    FailureCallback = function(err, ...) end;
-    PerDataCallback = function(result, ...) end;
+    SuccessCallback = function( context, resultset, ... ) end;
+    FailureCallback = function( context, err, ... ) end;
+    PerDataCallback = function( context, result, ... ) end;
+    Context         = GM; -- If not specified, nothing is passed.
 });
 --]]
-function dbobj:PrepareQuery(tab)
-    if (not tab.Text) then
-        error("No query text specified!", 2);
-    elseif (not tab.NumArgs) then
-        local args = 0;
-        for _ in string.gmatch(tab.Text, '(%%[diouXxfFeEgGaAcsb])') do
-            args = args + 1;
-        end
-        self.NumArgs = args;
-    end
-    tab._dbobj = self;
-    return new(queryobj, tab);
-end
 
-function dbobj:Query(text, qargs)
-    return self._db:Query(text, qargs or {});
+---
+-- Prepares a query for future runnage with placeholders
+-- @param text The querytext, complete with sprintf placeholders
+-- @return A prepared query object
+function dbobj:PrepareQuery( text )
+    if ( not text ) then
+        error( "No query text specified!", 2 );
+    end
+    local _, narg = string.gsub( text, '(%%[diouXxfFeEgGaAcsb])', '' );
+    return new( queryobj, {
+        Text    = text,
+        DB      = self,
+        NumArgs = narg;
+    } );
 end
 
 --
 -- QueryOBJ
 --
 
-function queryobj:Init(qargs)
-    self._datablock = qargs;
-    self._qmeta = {__index = qargs};
-    self.Text = qargs.Text;
-    self.NumArgs = qargs.NumArgs or 0;
+function queryobj:Init( qargs )
+    self._db     = qargs.DB;
+    self.Text    = qargs.Text;
+    self.NumArgs = qargs.NumArgs;
 end
 
-function queryobj:Prepare(...)
-    if (self.NumArgs == 0) then
+function queryobj:SetCallbacks( tab, context )
+    self._cDone = bind( tab.Done, context );
+    self._cFail = bind( tab.Fail, context );
+    self._cProg = bind( tab.Progress, context );
+end
+
+function queryobj:SetCallbackArgs( ... )
+    self._callbackArgs = {...};
+    if ( #self._callbackArgs == 0 ) then
+        self._callbackArgs = nil;
+    end
+end
+
+function queryobj:Prepare( ... )
+    if ( self.NumArgs == 0 ) then
         return;
     end
-    self.Prepared = true;
+    self._preped = true;
     local nargs = #{...};
-    if (nargs ~= self.NumArgs) then
-        error("Argument count missmatch! Expected " .. self.NumArgs .. " received " .. nargs .. "!", 2);
+    if ( nargs < self.NumArgs ) then
+        error( "Argument count missmatch! Expected " .. self.NumArgs .. " received " .. nargs .. "!", 2 );
     end
-    self.PreparedText = string.format(self.Text, ...);
+    self._prepedText = string.format( self.Text, ... );
 end
 
-function queryobj:Run(...)
-    local text;
-    if (self.NumArgs == 0) then
-        text = self.Text;
-    elseif (not self.Prepared) then
-        error("Tried to run an unprepared query!", 2);
+local function bindCArgs( func, cargs )
+    if ( not cargs ) then
+        return func;
     else
-        text = self.PreparedText;
+        return function( res )
+            func( res, unpack( cargs ) );
+        end
     end
-    local args = {...};
-    if (#args == 0) then
-        args = nil;
-    end
-    self._dbobj:Query(text, setmetatable({
-        CallbackArguments = args;
-    }, self._qmeta));
 end
 
-function queryobj:PrepareAndRun(prepargs, runargs)
-    if (self.NumArgs == 0) then
-        self:Run(runargs and unpack(runargs));
-        return;
+function queryobj:Run()
+    local text;
+    if ( self.NumArgs == 0 ) then
+        text = self.Text;
+    elseif ( not self._preped ) then
+        error( "Tried to run an unprepared query!", 2 );
+    else
+        text = self._prepedText;
     end
-    local nargs = #prepargs;
-    if (nargs ~= self.NumArgs) then
-        error("Argument count missmatch! Expected " .. self.NumArgs .. " received " .. nargs .. "!", 2);
+
+    local p = self._db:Query( text );
+    -- Deal w/ callbacks
+    local _ca = self._callbackArgs;
+    if ( self._cDone ) then
+        p:Done( bindCArgs( self._cDone, _ca ) );
     end
-    local text = string.format(Self.Text, unpack(prepargs));
-    if (runargs and #runargs == 0) then
-        runargs = nil;
+    if ( self._cFail ) then
+        p:Fail( bindCArgs( self._cFail, _ca ) );
     end
-    self._dbobj:Query(text, setmetatable({
-        CallbackArguments = runargs;
-    }, self._qmeta));
+    if ( self._cProg ) then
+        p:Progress( bindCArgs( self._cProg, _ca ) );
+    end
+    -- Reset state
+    self._preped = false;
+    self._callbackArgs = nil;
+    return p;
 end
 
-local registeredQueries = {};
 local registeredDatabaseMethods = {};
 
-local db;
-
-local connected = false;
-
-local function req(tab, name)
-    if (not tab[name]) then
-        error("You're missing '" .. name .. "' from the connection parameters!", 3);
-    end
-end
-local function onConnected(tab)
-    connected = true;
-    if (tab.ConnectCallback) then
-        tab.ConnectCallback();
-    end
-end
-local function onConnectionFailed(tab, err)
-    connected = false;
-    if (tab.FailureCallback) then
-        tab.FailureCallback(err);
-    else
-        error("Could not connect to the database: " .. err, 0);
+local function req( tab, name )
+    if ( not tab[name] ) then
+        error( "You're missing '" .. name .. "' from the connection parameters!", 3 );
     end
 end
 
---[[
-database.Connect{
-    Hostname = "foo";
-    Username = "bar";
-    Password = "baz";
-    Database = "quux";
-    Port = 1337;
-    DBMethod = "mysqloo";
-    EnableSQLite = false;
-}
-:Done(function(_, db) end)
-:Fail(function(_, err) error(err, 0); end);
---]]
-function Connect(tab)
-    if (not type(tab) == "table") then
-        error("Invalid connection data passed to database.Connect!", 2);
+---
+-- Creates a new database object
+-- @param tab Connection info
+-- @return A database object
+-- @usage
+-- local db = database.NewDatabase({
+--     Hostname = "foo";
+--     Username = "bar";
+--     Password = "baz";
+--     Database = "quux";
+--     Port = 3306; -- Optional, defaults to mysql's natural habitat
+--     DBMethod = "mysqloo"; -- Optional, defaults to whatever is available. Generally best not to use this.
+--     EnableSQLite = false; -- Optional, defaults to false.
+-- })
+-- db:Connect() -- Returns a promise object
+--   :Done( function() end ) -- DB Connected
+--   :Fail( function(err) end); -- DB unconnected (A connection error will ErrorNoHalt no matter what, and autoretry every minute )
+function NewDatabase( tab )
+    if ( not type(tab) == "table" ) then
+        error( "Invalid connection data passed!", 2 );
     end
-    req(tab, "Hostname");
-    req(tab, "Username");
-    req(tab, "Password");
-    req(tab, "Database");
-    req(tab, "Port"    );
-    local db;
-    if (tab.DBMethod) then
-        local success, errmsg = IsValidDBMethod(tab.DBMethod);
-        if (not success) then
-            error("Cannot use database method '" .. tab.DBMethod .. "': " .. errmsg, 2);
-        end
-        db = GetDBMethod(tab.DBMethod);
-    else
-        for name, method in pairs(registeredDatabaseMethods) do
-            if (method.CanSelect() and tab.EnableSQLite or name ~= "sqlite") then
-                db = method;
-                break;
-            en
-        end
-        if (not db) then
-            error("No valid database methods available!", 2);
+    req( tab, "Hostname" );
+    req( tab, "Username" );
+    req( tab, "Password" );
+    req( tab, "Database" );
+    tab.Port = tab.Port or 3306;
+    tab.Port = tonumber( tab.Port );
+    req( tab, "Port"    );
+    return new( dbobj, tab );
+end
+
+---
+-- Finds the first enabled database method
+-- @param EnableSQLite Wether or not SQLite is acceptable
+-- @return The name of the DB method or false if none are available
+function FindFirstAvailableDBMethod( EnableSQLite )
+    for name, method in pairs( registeredDatabaseMethods ) do
+        if ( method.CanSelect() and ( EnableSQLite or name ~= "sqlite" ) ) then
+            return name;
         end
     end
-
-    db = setmetatable({},{__index=db});
-
-    return db:Connect(tab);
+    return false;
 end
 
-local function req(tab, name)
-    if (not tab[name]) then
-        error("You're missing '" .. name .. "' from the database methods!", 3);
+---
+-- Creates and returns a new instance of a DB method
+-- @param name The name to instantatiationonate
+-- @return An instance or false, errmsg
+function GetNewDBMethod( name )
+    if ( not name ) then
+        error( "No method name passed!", 2 );
+    end
+    local s, e = IsValidDBMethod( name );
+    if ( not s ) then
+        return s, e;
+    end
+    return new( GetDBMethod( name ) );
+end
+
+local function req( tab, name )
+    if ( not tab[name] ) then
+        error( "You're missing '" .. name .. "' from the database methods!", 3 );
     end
 end
 
-function RegisterDatabaseMethod(name, tab)
-    local t = type(name);
-    if (t == "table") then
-        return regdb(name);
-    elseif (t ~= "string") then
-        error("Expected a string for argument 1 of database.RegisterDatabaseMethod!", 2);
-    elseif ( type(tab) ~= "table" ) then
-        error("Expected a table for argument 2 of database.RegisterDatabaseMethod!", 2);
+---
+-- Registers a new DB method
+-- @param name
+-- @param tab The __index metatable for instances
+function RegisterDBMethod( name, tab )
+    if ( type( name ) ~= "string" ) then
+        error( "Expected a string for argument 1 of database.RegisterDBMethod!", 2 );
+    elseif ( type( tab ) ~= "table" ) then
+        error( "Expected a table for argument 2 of database.RegisterDBMethod!", 2 );
     end
     tab.Name = name;
-    req(tab, "Connect");
-    req(tab, "Disconnect");
-    req(tab, "IsConnected");
-    req(tab, "Escape");
-    req(tab, "Query");
-    req(tab, "CanSelect");
-    registeredDatabaseMethods[string.lower(tab.Name)] = tab;
+    req( tab, "Connect" );
+    req( tab, "Disconnect" );
+    req( tab, "IsConnected" );
+    req( tab, "Escape" );
+    req( tab, "Query" );
+    req( tab, "CanSelect" );
+    registeredDatabaseMethods[string.lower( tab.Name )] = tab;
 end
 
-function IsValidDBMethod(name)
-    local db = registeredDatabases[string.lower(name)];
-    if (not db) then
+---
+-- @param name
+-- @return true or false and an error message
+function IsValidDBMethod( name )
+    if ( not name ) then
+        error( "No method name passed!", 2 );
+    end
+    local db = registeredDatabaseMethods[string.lower( name )];
+    if ( not db ) then
         return false, "Database method '" .. name .. "' does not exist!";
     end
     return db.CanSelect();
 end
 
-function GetDBMethod(name)
-    return registeredDatabases[string.lower(name)];
+---
+-- Returns a DB method's master metatable
+-- @param name
+-- @return see above
+function GetDBMethod( name )
+    if ( not name ) then
+        error( "No method name passed!", 2 );
+    end
+    return registeredDatabaseMethods[string.lower( name )];
 end
 
-local function checkmodule(name)
-    local prefix = (SERVER) and "gmsv" or "gmcl";
+local function checkmodule( name )
+    local prefix = ( SERVER ) and "gmsv" or "gmcl";
     local suffix;
-    if (system.IsWindows()) then
+    if ( system.IsWindows() ) then
         suffix = "win32";
-    elseif (system.IsLinux()) then
+    elseif ( system.IsLinux() ) then
         suffix = "linux";
-    elseif (system.IsOSX()) then
+    elseif ( system.IsOSX() ) then
         suffix = "osx";
     else
-        error("The fuck kind of a system are you running me on?!");
+        error( "The fuck kind of a system are you running me on?!" );
     end
-    if (file.Exists("lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll", "GAME")) then
-        return require(name);
+    if ( file.Exists( "lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll", "GAME" ) ) then
+        return require( "lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll", "GAME" );
     end
-end
-local function callback(datachunk, name, arg)
-    if (not datachunk[name]) then return; end
-    local args = datachunk.CallbackArguments;
-    contextcall(datachunk[name], datachunk.Context, arg, args and unpack(args));
 end
 do -- TMySQL
-    local function mcallback(deferred, results, success, err)
-        if (success) then
-            for _, result in ipairs(results) do
-                deferred:Notify(result);
+    local function mcallback( deferred, results, success, err )
+        if ( success ) then
+            for _, result in ipairs( results ) do
+                deferred:Notify( result );
             end
-            deferred:Resolve(results);
+            deferred:Resolve( results );
         else
-            deferred:Reject(err);
+            deferred:Reject( err );
         end
     end
 
     local db = {};
 
-    function db:Connect(tab)
+    function db:Connect( tab )
         local deferred = Deferred();
-        if (self._db) then
+        if ( self._db ) then
             self:Disconnect();
         end
         local err;
-        self._db, err = tmysql.initialize(tab.Hostname, tab.Username, tab.Password, tab.Database, tab.Port);
-        if (self._db) then
-            deferred:Resolve(self);
+        self._db, err = tmysql.initialize( tab.Hostname, tab.Username, tab.Password, tab.Database, tab.Port );
+        if ( self._db ) then
+            deferred:Resolve( self );
         else
-            deferred:Reject( string.gsub(err, "^Error connecting to DB: ", "") );
+            deferred:Reject( string.gsub( err, "^Error connecting to DB: ", "" ) );
         end
         return deferred:Promise();
     end
 
     function db:Disconnect()
-        if (self._db) then
+        if ( self._db ) then
             self._db:Disconnect();
+            self._db = nil;
         end
     end
 
-    function db:Query(text)
-        if (not self._db) then
-            error("Cannot query without a database connected!");
+    function db:Query( text )
+        if ( not self._db ) then
+            error( "Cannot query without a database connected!" );
         end
         local deferred = Deferred();
-        self._db:Query(text, mcallback, 1, deferred);
+        self._db:Query( text, mcallback, 1, deferred );
         return deferred:Promise();
     end
 
-    function db:Escape(text)
-        return tmysql.escape(text);
+    function db:Escape( text )
+        return tmysql.escape( text );
     end
 
     function db:IsConnected()
-        -- Probably true
-        return true;
+        return self._db ~= nil;
     end
 
     function db.CanSelect()
-        tmysql = tmysql or checkmodule('tmysql4');
-        if (not tmysql) then
+        tmysql = tmysql or checkmodule( 'tmysql4' );
+        if ( not tmysql ) then
             return false, "TMySQL4 is not available!";
         end
         return true;
     end
 
-    RegisterDatabaseMethod("TMySQL", db);
+    RegisterDBMethod( "TMySQL", db );
 end
 do -- MySQLOO
     local mysqlooyes, mysqloono, mysqlooack, mysqloodata;
-    function mysqlooyes(query, results)
-        query.deferred:Resolve(results);
+    function mysqlooyes( query, results )
+        query.deferred:Resolve( results );
     end
 
-    function mysqloono(query, err)
-        query.deferred:Reject(err);
+    function mysqloono( query, err )
+        query.deferred:Reject( err );
     end
 
-    function mysqlooack(query)
-        mysqloono(query, 'Aborted!');
+    function mysqlooack( query )
+        mysqloono( query, 'Aborted!' );
     end
 
-    function mysqloodata(query, result)
-        query.deferred:Notify(result);
+    function mysqloodata( query, result )
+        query.deferred:Notify( result );
     end
 
     local db = {};
 
-    function db:Connect(cdata)
+    function db:Connect( cdata )
         local deferred = Deferred();
-        if (self._db) then
+        if ( self._db ) then
             self:Disconnect();
         end
-        self._db = mysqloo.connect(cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port);
-        self._db.onConnected = function(db)
-            deferred:Resolve(self);
+        self._db = mysqloo.connect( cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port );
+        self._db.onConnected = function( db )
+            deferred:Resolve( self );
         end
-        self._db.onConnectionFailed = function(db, err)
-            deferred:Reject(self, err);
+        self._db.onConnectionFailed = function( db, err )
+            deferred:Reject( self, err );
         end
         self._db:connect();
         return deferred:Promise();
     end
 
     function db:Disconnect()
-        if (self._db) then
+        if ( self._db ) then
             self._db:AbortAllQueries();
             self._db = nil;
         end
     end
 
-    function db:Query(text)
-        if (not self._db) then
-            error("Cannot query without a database connected!");
+    function db:Query( text )
+        if ( not self._db ) then
+            error( "Cannot query without a database connected!" );
         end
         local deferred = Deferred();
-        local q = mdb:query(text);
+        local q = self._db:query( text );
         q.onError   = mysqloono;
         q.onSuccess = mysqlooyes;
         q.onData    = mysqloodata;
         q.deferred  = deferred;
         q:start();
-        -- I can't remember if queries are light userdata or not.
-        table.insert(activeQueries, q);
+        -- TODO: Autoreconnect on disconnection w/ queued queries etc etc
+        -- I can't remember if queries are light userdata or not. If they are, this will break.
+        -- table.insert( activeQueries, q );
         return deferred:Promise();
     end
 
-    function db:Escape(text)
-        if (not self._db) then
-            error("There is no database open to perform this act!", 2);
+    function db:Escape( text )
+        if ( not self._db ) then
+            error( "There is no database open to perform this act!", 2 );
         end
-        return self._db:escape(text);
+        return self._db:escape( text );
     end
 
+    -- function db:IsConnected()
+    --     if ( not self._db ) then
+    --         return false;
+    --     end
+    --     local status = self._db:status();
+    --     if ( status == mysqloo.DATABASE_CONNECTED ) then
+    --         return true;
+    --     end
+    --     connected = false;
+    --     if ( status == mysqloo.DATABASE_INTERNAL_ERROR ) then
+    --         ErrorNoHalt( "The MySQLOO database has encountered an internal error!\n" );
+    --     end
+    --     return false;
+    -- end
     function db:IsConnected()
-        if (not self._db) then
-            return false;
-        end
-        local status = self._db:status();
-        if (status == mysqloo.DATABASE_CONNECTED) then
-            return true;
-        end
-        connected = false;
-        if (status == mysqloo.DATABASE_INTERNAL_ERROR) then
-            ErrorNoHalt("The MySQLOO database has encountered an internal error!\n");
-        end
-        return false;
+        return self._db ~= nil;
     end
+
 
     function db.CanSelect()
-        mysqloo = mysqloo or checkmodule('mysqloo');
-        if (not mysqloo) then
+        mysqloo = mysqloo or checkmodule( 'mysqloo' );
+        if ( not mysqloo ) then
             return false, "MySQLOO is not available!";
         end
         return true;
     end
 
-    RegisterDatabaseMethod("MySQLOO", db);
+    RegisterDBMethod( "MySQLOO", db );
 end
 do -- SQLite
     local db = {};
 
-    function db:Connect(cdata)
+    function db:Connect( cdata )
         local deferred = Deferred();
-        deferred:Resolve(self);
+        deferred:Resolve( self );
         return deferred:Promise();
     end
 
     function db:Disconnect()
     end
 
-    function db:Query(text)
+    function db:Query( text )
         local deferred = Deferred();
-        local results = sqlite.Query(text);
-        if (results) then
-            for _, result in ipairs(results) do
-                deferred:Notify(result);
+        local results = sqlite.Query( text );
+        if ( results ) then
+            for _, result in ipairs( results ) do
+                deferred:Notify( result );
             end
-            deferred:Resolve(results);
+            deferred:Resolve( results );
         else
-            deferred:Reject(sqlite.LastError());
+            deferred:Reject( sqlite.LastError() );
         end
         return deferred:Promise();
-    end
-
-    function db:Escape(text)
-        return sqlite.SQLStr(text);
     end
 
     function db:IsConnected()
         return true;
     end
 
+    function db:Escape( text )
+        return sqlite.SQLStr( text );
+    end
+
     function db.CanSelect()
         return true;
     end
 
-    RegisterDatabaseMethod("SQLite", db);
+    RegisterDBMethod( "SQLite", db );
 end
 
 -- Autoselect
-if (mysqloo) then
-    SelectDatabaseMethod "MySQLOO";
-elseif (tmysql) then
+if ( tmysql ) then
     SelectDatabaseMethod "TMySQL";
+elseif ( mysqloo ) then
+    SelectDatabaseMethod "MySQLOO";
 end

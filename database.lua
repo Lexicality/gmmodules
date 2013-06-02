@@ -36,24 +36,24 @@ local tmysql   = tmysql;
 -- The Universal Database Module is an attempt to provide a single rational interface
 --  that allows Developers to run SQL commands without caring which MySQL module the server has installed.
 -- It also has client-side prepared queries which is nice.
--- @author Lex Robinson - lexi@lexi.org.uk
+-- @author Lex Robinson - lexi at lexi dot org dot uk
 -- @copyright 2012-2013 Lex Robinson - Relased under the MIT License
 -- @release Alpha v2
 -- @usage see database.NewDatabase
--- @see database.NewDatabase
+-- @see NewDatabase
 module( "database" );
 
 ---
 -- The main Database object the developer will generally be interacting with
 -- @name Database
 -- @class table
--- @seealso NewDatabase
+-- @see NewDatabase
 local Database = {};
 ---
 -- A client-side prepared query object.
 -- @name PreparedQuery
 -- @class table
--- @seealso Database:PrepareQuery
+-- @see Database:PrepareQuery
 local PreparedQuery = {};
 
 --
@@ -102,7 +102,7 @@ end} );
 
 --
 -- CTor. Accepts the variables passed to NewDatabase
--- @seealso NewDatabase
+-- @see NewDatabase
 -- @param tab connection details
 function Database:Init( tab )
     self._conargs =  tab;
@@ -128,6 +128,7 @@ end
 ---
 -- Connects with the stored args
 -- @return Promise object for the DB connection
+-- @see NewDatabase
 function Database:Connect()
     return self._db:Connect( self._conargs, self )
         :Then( function( _ ) return self; end ) -- Replace the dbobject with ourself
@@ -146,20 +147,11 @@ function Database:Query( text )
     return self._db:Query( text ):Fail(queryFail);
 end
 
---[[
-Database:PrepareQuery({
-    Text = "Query Text";
-    SuccessCallback = function( context, resultset, ... ) end;
-    FailureCallback = function( context, err, ... ) end;
-    PerDataCallback = function( context, result, ... ) end;
-    Context         = GM; -- If not specified, nothing is passed.
-});
---]]
-
 ---
 -- Prepares a query for future runnage with placeholders
 -- @param text The querytext, complete with sprintf placeholders
 -- @return A prepared query object
+-- @see PreparedQuery
 function Database:PrepareQuery( text )
     if ( not text ) then
         error( "No query text specified!", 2 );
@@ -202,7 +194,7 @@ Database.IsConnected = nil;
 --
 -- CTor. Only ever called by Database:PrepareQuery
 -- @param qargs data from the mothership
--- @seealso Database:PrepareQuery
+-- @see Database:PrepareQuery
 function PreparedQuery:Init( qargs )
     self._db     = qargs.DB;
     self.Text    = qargs.Text;
@@ -212,7 +204,7 @@ end
 ---
 -- Set persistant callbacks to be called for every invocation.<br />
 -- The callbacks should be of the form of function( [context,] result [, arg1, arg2, ...] ) where arg1+ are arguments passed to SetCallbackArgs
--- @seealso PreparedQuery:SetCallbackArgs
+-- @see PreparedQuery:SetCallbackArgs
 -- @usage <pre>
 -- local query = db:PrepareQuery( "do player stuff" ); <br />
 -- query:SetCallbacks( { <br />
@@ -246,7 +238,7 @@ function PreparedQuery:Prepare( ... )
         return;
     end
     self._preped = true;
-    local args = {...}:
+    local args = {...};
     local nargs = #args;
     if ( nargs < self.NumArgs ) then
         error( "Argument count missmatch! Expected " .. self.NumArgs .. " but only received " .. nargs .. "!", 2 );
@@ -324,7 +316,7 @@ end
 --</pre>
 -- @param connection A table composed of the following fields:
 -- @return A Database object
--- @seealso Database
+-- @see Database
 function NewDatabase( connection )
     if ( not type( connection ) == "table" ) then
         error( "Invalid connection data passed!", 2 );
@@ -333,8 +325,8 @@ function NewDatabase( connection )
     req( connection, "Username" );
     req( connection, "Password" );
     req( connection, "Database" );
-    tab.Port = tab.Port or 3306;
-    tab.Port = tonumber( tab.Port );
+    connection.Port = connection.Port or 3306;
+    connection.Port = tonumber( connection.Port );
     req( connection, "Port"    );
     return new( Database, connection );
 end
@@ -432,7 +424,7 @@ local function checkmodule( name )
         error( "The fuck kind of a system are you running me on?!" );
     end
     if ( file.Exists( "lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll", "GAME" ) ) then
-        return require( "lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll", "GAME" );
+        return require( "lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll" );
     end
 end
 do -- TMySQL

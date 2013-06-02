@@ -545,10 +545,3 @@ do -- SQLite
 
     RegisterDBMethod( "SQLite", db );
 end
-
--- Autoselect
-if ( tmysql ) then
-    SelectDatabaseMethod "TMySQL";
-elseif ( mysqloo ) then
-    SelectDatabaseMethod "MySQLOO";
-end

@@ -218,6 +218,7 @@ function PreparedQuery:SetCallbacks( tab, context )
     self._cDone = bind( tab.Done, context );
     self._cFail = bind( tab.Fail, context );
     self._cProg = bind( tab.Progress, context );
+    return self;
 end
 
 ---
@@ -228,6 +229,7 @@ function PreparedQuery:SetCallbackArgs( ... )
     if ( #self._callbackArgs == 0 ) then
         self._callbackArgs = nil;
     end
+    return self;
 end
 
 ---
@@ -247,6 +249,7 @@ function PreparedQuery:Prepare( ... )
         args[i] = self._db:Escape(arg);
     end
     self._prepedText = string.format( self.Text, ... );
+    return self;
 end
 
 local function bindCArgs( func, cargs )

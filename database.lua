@@ -106,19 +106,6 @@ end} );
 -- @param tab connection details
 function Database:Init( tab )
     self._conargs =  tab;
-    local db = tab.DBMethod;
-    if ( db ) then
-        local success, errmsg = IsValidDBMethod( db );
-        if ( not success ) then
-            error( "Cannot use database method '" .. db .. "': " .. errmsg, 4 );
-        end
-    else
-        db = FindFirstAvailableDBMethod( tab.EnableSQLite );
-        if ( not db ) then
-            error( "No valid database methods available!", 4 );
-        end
-    end
-    self._db = GetNewDBMethod( db );
 end
 
 local function connectionFail( errmsg )
@@ -126,10 +113,34 @@ local function connectionFail( errmsg )
 end
 
 ---
+-- Change a connection param
+-- Note that changes will not apply until the next (re)connect
+-- @param name The parameter's key (see NewDatabase for keys)
+-- @param value The new value to set
+function Database:SetConnectionParameter( name, value )
+    self._conargs[name] = value;
+end
+
+---
 -- Connects with the stored args
 -- @return Promise object for the DB connection
 -- @see NewDatabase
 function Database:Connect()
+    if ( not self._db ) then
+        local db = self._conargs.DBMethod;
+        if ( db ) then
+            local success, errmsg = IsValidDBMethod( db );
+            if ( not success ) then
+                error( "Cannot use database method '" .. db .. "': " .. errmsg, 2 );
+            end
+        else
+            db = FindFirstAvailableDBMethod( self._conargs.EnableSQLite );
+            if ( not db ) then
+                error( "No valid database methods available!", 2 );
+            end
+        end
+        self._db = GetNewDBMethod( db );
+    end
     return self._db:Connect( self._conargs, self )
         :Then( function( _ ) return self; end ) -- Replace the dbobject with ourself
         :Fail( connectionFail ); -- Always thrown an errmsg
@@ -144,6 +155,9 @@ end
 -- @param text The query to run
 -- @return A promise object for the query's result
 function Database:Query( text )
+    if ( not self:IsConnected() ) then
+        error( "Cannot query a non-connected database!", 2 );
+    end
     return self._db:Query( text ):Fail(queryFail);
 end
 
@@ -182,10 +196,10 @@ Database.Escape = nil;
 
 ---
 -- Checks to seee if Connect as been called and Disconnect hasn't
--- @name Database:IsConnected
--- @class function
 -- @return boolean
-Database.IsConnected = nil;
+function Database:IsConnected()
+    return self._db and self._db:IsConnected();
+end
 
 --
 -- QueryOBJ
@@ -266,6 +280,9 @@ end
 -- Run a prepared query (and then reset it so it can be re-prepared with new data)
 -- @return A promise object for the query's data
 function PreparedQuery:Run()
+    if ( not self._db:IsConnected() ) then
+        error( "Cannot execute query without a database!", 2 );
+    end
     local text;
     if ( self.NumArgs == 0 ) then
         text = self.Text;

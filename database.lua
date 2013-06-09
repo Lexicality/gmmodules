@@ -591,12 +591,15 @@ do -- MySQLOO
         end
         deferred = deferred or Deferred();
         local q = self._db:query( text );
+        if ( not q ) then
+            return self:qfail( 'The DB is not connected!', text );
+        end
         q.onError   = mysqloono;
         q.onSuccess = mysqlooyes;
         q.onData    = mysqloodata;
         q.deferred  = deferred;
         q:start();
-        deferred:Then(nil, function( errmsg ) self:qfail( errmsg, text ) end);
+        deferred:Then(nil, function( errmsg ) return self:qfail( errmsg, text ) end);
         -- I can't remember if queries are light userdata or not. If they are, this will break.
         -- table.insert( activeQueries, q );
         return deferred:Promise();

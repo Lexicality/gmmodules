@@ -226,6 +226,7 @@ end
 
 queries["Check for Bans"]:SetCallbacks( {
     Progress: function( data, name, steamID )
+    -- TODO: Reason, time left
         notifymessage( name, " has been identified as ", data.name, ", who is banned. Kicking ... " );
         kickid( steamID );
         banid( steamID );

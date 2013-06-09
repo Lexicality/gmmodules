@@ -538,22 +538,23 @@ do -- MySQLOO
         if ( self._db ) then
             self:Disconnect();
         end
-        self._db = mysqloo.connect( cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port );
-        return self._connect();
+        return self:_connect( mysqloo.connect( cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port ) );
     end
-    function db:_connect()
+    function db:_connect( dbobj )
         local deferred = Deferred();
-        self._db.onConnected = function( _ )
-            deferred:Resolve( self );
+        dbobj.onConnected = function( dbobj )
+            self._db = dbobj;
             for _, q in pairs( self._queue ) do
                 self:Query( q.text, q.deferred );
             end
             self._queue = {};
+            deferred:Resolve( self );
         end
-        self._db.onConnectionFailed = function( _, err )
+        dbobj.onConnectionFailed = function( _, err )
             deferred:Reject( self, err );
         end
-        self._db:connect();
+        dbobj:connect();
+        dbobj:wait();
         return deferred:Promise();
     end
 
@@ -578,7 +579,9 @@ do -- MySQLOO
                 self:Connect(); -- Full restart the db
             -- DB timed out
             elseif ( status ~= mysqloo.DATABASE_CONNECTING ) then
-                self:_connect(); -- Kick the connection up the butt
+                local db = self._db;
+                self._db = nil;
+                timer.Simple(0, function() self:_connect( db ); end);
             end
         end
         table.insert( self._queue, { text = text, deferred = deferred } );

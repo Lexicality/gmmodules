@@ -48,7 +48,7 @@ end
 -- Sourcebans.lua provides an interface to SourceBans through GLua, so that SourceMod is not required.
 -- It also attempts to duplicate the effects that would be had by running SourceBans, such as the concommand and convars it creates.
 -- @release version 1.53 With added sm_*say commands, the SBANS_NO_COMMANDS directive, a fix for edge cases and better sm_rehash support
-module("sourcebans");
+-- module("sourcebans");
 --[[
     CHANGELOG
     1.53  sm_rehash now goes through all online players and makes sure their group is up to date.

@@ -36,6 +36,7 @@ local concommand, game, hook, math, os, player, string, table, timer =
 local HUD_PRINTCONSOLE, HUD_PRINTCENTER, HUD_PRINTNOTIFY, HUD_PRINTTALK = 
       HUD_PRINTCONSOLE, HUD_PRINTCENTER, HUD_PRINTNOTIFY, HUD_PRINTTALK ;
 
+local Deferred = require( 'promises' );
 local database = require( 'database' );
 
 local nocmds;
@@ -117,6 +118,7 @@ local queries = {
     -- ["Check for Bans by IP"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND ip = '%s' LIMIT 1";
     ["Check for Bans by SteamID"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND authid = '%s' LIMIT 1";
     ["Get All Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL;";
+    ["Get Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE (length = 0 OR ends > UNIX_TIMESTAMP()) AND removetype IS NULL LIMIT %d OFFSET %d;";
     
     ["Log Join Attempt"] = "INSERT INTO %s_banlog ( sid, time, name, bid) VALUES( %i, %i, '%s', %i )";
     
@@ -173,6 +175,7 @@ end
 local function cleanIP( ip )
     return string.match( ip, "(%d+%.%d+%.%d+%.%d+)" );
 end
+-- FIXME: Why?
 local function getIP( ply )
     return cleanIP( ply:IPAddress() );
 end
@@ -211,6 +214,9 @@ local function handleLegacyCallback( callback, promise )
         :Done( function( result ) callback(true,  result); end )
         :Fail( function( errmsg ) callback(false, errmsg); end );
 end
+local function isActive()
+    return db:IsConnected();
+end
 local function blankCallback() end
 
 --[[ Set up Queries ]]--
@@ -234,46 +240,38 @@ queries["Check for Bans by SteamID"]:SetCallbacks( {
     Fail: errCallback( "check %s's ban status" );
 } );
 queries["Get All Active Bans"]:SetCallbacks( {
-    Fail: errCallback( "check %s's ban status" );
+    Fail: errCallback( "aquire every ban ever" );
 } );
-["Log Join Attempt"]:SetCallbacks( {
+queries["Get Active Bans"]:SetCallbacks( {
+    Fail: errCallback( "aquire page #%d of bans" );
+} );
+queries["Log Join Attempt"]:SetCallbacks( {
     Fail: errCallback( "store %s's foiled join attempt" );
 } );
+queries["Look up serverID"]:SetCallbacks( {
+    Progress: function( data )
+        config.serverid = data.sid;
+    end;
+    Fail: errCallback( "lookup the server's ID" );
+});
 --[[ Query Functions ]]--
 local checkBan
 local adminGroupLoaderOnSuccess, adminGroupLoaderOnFailure;
 local loadAdmins, adminLoaderOnSuccess, adminLoaderOnData, adminLoaderOnFailure;
 local doBan, banOnSuccess, banOnFailure;
 local startDatabase, databaseOnConnected, databaseOnFailure;
-local activeBansOnSuccess, activeBansOnFailure;
 local doUnban, unbanOnFailure;
-local checkBanBySteamID
 
 -- Functions --
 --
 -- See if a player is banned and kick/ban them if they are.
--- @param steamID The player's SteamID
--- @param ip The player's IP
--- @param name The player's name for logging porpoises
-function checkBan( steamID, ip, name )
+-- @param ply The player
+function checkBan( ply )-- steamID, ip, name )
+    local steamID = ply:SteamID();
     return queries["Check for Bans"]
-        :Prepare( config.dbprefix, steamID, ip )
-        :SetCallbackArgs( name, steamID )
+        :Prepare( config.dbprefix, steamID, getIP( ply ) )
+        :SetCallbackArgs( ply:Name(), steamID )
         :Run();
-end
-
-local function checkBanBySteamIDThen( results )
-    return #results > 0;
-end
-function checkBanBySteamID( steamID, callback )
-    return handleLegacyCallback(
-        callback,
-        queries["Check for Bans by SteamID"]
-            :Prepare( config.dbprefix, steamID )
-            :SetCallbackArgs( steamID )
-            :Run()
-            :Then(checkBanBySteamIDThen)
-        );
 end
 
 function loadAdmins()
@@ -287,12 +285,38 @@ function loadAdmins()
     notifymessage( "Loading Admin Groups . . ." );
 end
 
-function startDatabase()
-    database = mysqloo.connect( config.hostname, config.username, config.password, config.database, config.portnumb );
-    database.onConnected = databaseOnConnected;
-    database.onConnectionFailed = databaseOnFailure;
-    database.pending = {};
-    database:connect();
+function startDatabase( deferred )
+    -- I don't see how but it might I guess
+    if ( isActive() ) then
+        if ( deferred ) then
+            deferred:Resolve();
+        end
+    end
+    local deferred = deferred or Deferred();
+    local cb = errCallback( "activate Sourcebans" );
+    db:Connect()
+        :Then( function()
+            if ( config.serverid < 0 ) then
+                return queries["Look up serverID"]
+                    :Prepare( config.dbprefix, serverip, serverport )
+                    :Run();
+            end
+        end )
+        :Then( function()
+            deferred:Resolve();
+        end )
+        :Then( function()
+            for _, ply in pairs( player.GetAll() ) do
+                checkBan( ply );
+            end
+        end)
+        :Then( loadAdmins )
+        :Fail( function( errmsg )
+            cb( errmsg );
+            notifymessage( "Setting a reconnection timer for 60 seconds!" );
+            timer.Simple( 60, function() startDatabase( deferred ); end );
+        end );
+    return deferred;
 end
 
 function doUnban( query, id, reason, admin )
@@ -381,41 +405,10 @@ function banOnSuccess( self )
     self.callback( true );
 end
 
-function databaseOnConnected( self )
-    self.automaticretry = nil;
-    if ( config.serverid < 0 ) then
-        local query = self:query( queries["Look up serverID"]:format(config.dbprefix, serverip, serverport ) )
-        function query:onSuccess( data )
-            config.serverid = data.sid;
-        end;
-        function query:onFailure( reason )
-            notifyerror( "SQL error while attempting to look up serverID: ", reason );
-        end
-        query:start();
-        -- Woo hangtime
-        query:wait();
-    end
-    if ( not admins ) then
-        loadAdmins();
-    end
-    if ( #self.pending == 0 ) then return; end
-    local query, ply, steamID;
-    for _, info in pairs( self.pending ) do
-        query           = self:query( info[1] );
-        query.steamID   = info[2];
-        query.name      = info[3];
-        query.player    = info[4];
-        query.onData    = banCheckerOnData;
-        query.onFailure = banCheckerOnFailure;
-        query:start();
-    end
-    self.pending = {};
-end
-
-function activeBansOnSuccess( self )
+local function activeBansDataTransform( results )
     local ret = {}
     local adminName, adminID;
-    for _, data in pairs( self:getData() ) do
+    for _, data in pairs( results ) do
         if ( data.aid ~= 0 ) then
             local admin = adminsByID[data.aid];
             if ( not admin ) then -- 
@@ -442,7 +435,7 @@ function activeBansOnSuccess( self )
             AdminID     = adminID;
         }
     end
-    self.callback( ret );
+    return ret;
 end
 
 -- Failure --
@@ -460,12 +453,6 @@ function banOnFailure( self, err )
     self.callback( false, err );
 end
 
-function databaseOnFailure( self, err )
-    notifyerror( "Failed to connect to the database: ", err, ". Retrying in 60 seconds." );
-    self.automaticretry = true;
-    timer.Simple( 60, self.connect, self );
-end
-
 function activeBansOnFailure( self, err )
     notifyerror( "SQL Error while loading all active bans! ", err );
     self.callback( false, err );
@@ -477,21 +464,16 @@ end
 
 --[[ Hooks ]]--
 do
-    local function ShutDown()
-        if ( database ) then
-            database:abortAllQueries();
-        end
-    end
 
     local function PlayerAuthed( ply, steamID )
         -- Always have this running.
         idLookup[steamID] = ply;
 
-        if ( not database ) then
+        if ( not  ) then
             notifyerror( "Player ", ply:Name(), " joined, but SourceBans.lua is not active!" );
             return;
         end
-        checkBan( steamID, getIP( ply ), ply:Name( ) );
+        checkBan( ply );
         if ( not admins ) then
             return;
         end
@@ -509,23 +491,24 @@ do
         idLookup[ply:SteamID()] = nil;
     end
         
-
-    hook.Add( "ShutDown", "SourceBans.lua - ShutDown", ShutDown );
     hook.Add( "PlayerAuthed", "SourceBans.lua - PlayerAuthed", PlayerAuthed );
     hook.Add( "PlayerDisconnected", "SourceBans.lua - PlayerDisconnected", PlayerDisconnected );
 end
 
 
---[[ Exported Functions ]]--        
-local function checkConnection()
-    return db:IsConnected();
-end
+--[[ Exported Functions ]]--
+local activated = false;
 
 ---
 -- Starts the database and activates the module's functionality.
+-- @return A promise object that will resolve once the module is active.
 function Activate()
-    startDatabase();
+    if ( activated ) then
+        error( "Do not call Activate() more than once!", 2 );
+    end
+    activated = true;
     notifymessage( "Starting the database." );
+    return startDatabase();
 end
 
 ---
@@ -537,7 +520,7 @@ end
 -- @param callback ( Optional ) A function to call with the results of the ban. Passed true if it worked, false and a message if it didn't.
 function BanPlayer( ply, time, reason, admin, callback )
     callback = callback or blankCallback;
-    if ( not checkConnection() ) then
+    if ( not isActive() ) then
         return callback( false, "No Database Connection" );
     elseif ( not ply:IsValid() ) then
         error( "Expected player, got NULL!", 2 );
@@ -555,7 +538,7 @@ end
 -- @param callback ( Optional ) A function to call with the results of the ban. Passed true if it worked, false and a message if it didn't.
 function BanPlayerBySteamID( steamID, time, reason, admin, name, callback )
     callback = callback or blankCallback;
-    if ( not checkConnection() ) then
+    if ( not isActive() ) then
         return callback( false, "No Database Connection" );
     end
     for _, ply in pairs( player.GetAll() ) do
@@ -576,7 +559,7 @@ end
 -- @param callback ( Optional ) A function to call with the results of the ban. Passed true if it worked, false and a message if it didn't.
 function BanPlayerByIP( ip, time, reason, admin, name, callback )
     callback = callback or blankCallback;
-    if ( not checkConnection() ) then
+    if ( not isActive() ) then
         return callback( false, "No Database Connection" );
     end
     for _, ply in pairs( player.GetAll() ) do
@@ -599,7 +582,7 @@ end
 -- @param callback ( Optional ) A function to call with the results of the ban. Passed true if it worked, false and a message if it didn't.
 function BanPlayerBySteamIDAndIP( steamID, ip, time, reason, admin, name, callback )
     callback = callback or blankCallback;
-    if ( not checkConnection() ) then
+    if ( not isActive() ) then
         return callback( false, "No Database Connection" );
     end
     doBan( steamID, cleanIP( ip ), name, time, reason, admin, callback );
@@ -612,7 +595,7 @@ end
 -- @param reason The reason they are being unbanned.
 -- @param admin ( Optional ) The admin who did the unban. Leave nil for CONSOLE.
 function UnbanPlayerBySteamID( steamID, reason, admin )
-    if ( not checkConnection() ) then
+    if ( not isActive() ) then
         return false, "No Database Connection";
     end
     doUnban( queries["Unban SteamID"], steamID, reason, admin );
@@ -625,7 +608,7 @@ end
 -- @param reason The reason they are being unbanned.
 -- @param admin ( Optional ) The admin who did the unban. Leave nil for CONSOLE.
 function UnbanPlayerByIPAddress( ip, reason, admin )
-    if ( not checkConnection() ) then
+    if ( not isActive() ) then
         return false, "No Database Connection";
     end
     doUnban( queries["Unban IPAddress"], ip, reason, admin );
@@ -633,8 +616,30 @@ function UnbanPlayerByIPAddress( ip, reason, admin )
 end
 
 ---
--- Fetches all currently active bans in a table.
--- If the ban was inacted by the server, the AdminID will be "STEAM_ID_SERVER".<br />
+-- DEPRECATED Fetches all currently active bans in a table.
+-- This function is deprecated in favour of GetActiveBans and exists purely for legacy. Do not use it in new code.
+-- @see GetActiveBans
+-- @param callback (optional) The function to be given the table
+-- @return A promise object for the query
+function GetAllActiveBans( callback )
+    if ( not isActive() ) then
+        error( "Not activated yet!", 2 );
+    end
+    local promise = queries["Get All Active Bans"]
+        :Prepare( config.dbprefix )
+        :Run()
+        :Then( activeBansDataTransform );
+    if ( callback ) then
+        handleLegacyCallback(callback, promise);
+    end
+    return promise;
+end
+
+---
+-- Fetches a page of currently active bans. <br />
+-- This is preferred over GetAllActiveBans for load reasons. <br />
+-- Fetches numPerPage bans starting with ban #((pageNum - 1) * numPerPage) <br />
+-- If the ban was inacted by the server, the AdminID will be "STEAM_ID_SERVER". <br />
 -- If the server does not know who the admin who commited the ban is, the AdminID will be "STEAM_ID_UNKNOWN".<br/>
 -- Example table structure: <br/>
 -- <pre>{ <br/>
@@ -649,31 +654,40 @@ end
 -- &nbsp; AdminID = "STEAM_0:1:16678762" <br/>
 -- }</pre> <br/>
 -- Bear in mind that SteamID or IPAddress may be a blank string.
--- @param callback The function to be given the table
-function GetAllActiveBans( callback )
-    if ( not callback ) then
-        error( "Function expected, got nothing!", 2 );
-    elseif ( not checkConnection() ) then
-        return callback( false, "No Database Connection" );
+-- @param pageNum [Default: 1] The page # to fetch
+-- @param numPerPage [Default: 20] The number of bans per page to fetch
+-- @param callback (Optional, deprecated) The function to be passed the table.
+-- @return A promise object for the query
+function GetActiveBans( pageNum, numPerPage, callback )
+    if ( not isActive() ) then
+        error( "Not activated yet!", 2 );
     end
-    local query = database:query( queries["Get All Active Bans"]:format( config.dbprefix ) );
-    query.onSuccess = activeBansOnSuccess;
-    query.onFailure = activeBansOnFailure;
-    query.callback = callback;
-    query:start();
+    pageNum = pageNum or 1;
+    numPerPage = numPerPage or 20;
+    local offset = ((pageNum - 1) * numPerPage);
+    local promise = queries["Get Active Bans"]
+        :Prepare( config.dbprefix, limit, offset )
+        :SetCallbackArgs( pageNum )
+        :Run()
+        :Then( activeBansDataTransform );
+    if ( callback ) then
+        handleLegacyCallback(callback, promise);
+    end
+    return promise;
 end
 
 ---
--- Set the config variables. Most will not take effect until the next database connection.<br />
+-- Set the config variables. This will trigger an error if you call it after Activate(). <br/>
 -- NOTE: These settings do *NOT* persist. You will need to set them all each time.
 -- @param key The settings key to set
 -- @param value The value to set the key to.
 -- @usage Acceptable keys: hostname, username, password, database, dbprefix, portnumb, serverid, website, showbanreason and dogroups.
 function SetConfig( key, value )
-    if ( config[key] == nil ) then
+    if ( activated ) then
+        error( "Do not call SetConfig() after calling Activate()!", 2 );
+    elseif ( config[key] == nil ) then
         error( "Invalid key provided. Please check your information.",2 );
-    end
-    if ( key == "portnumb" or key == "serverid" ) then
+    elseif ( key == "portnumb" or key == "serverid" ) then
         value = tonumber( value );
     elseif ( key == "showbanreason" or key == "dogroups" ) then
         value = tobool( value );
@@ -689,22 +703,32 @@ end
 ---
 -- Checks to see if a SteamID is banned from the system
 -- @param steamID The SteamID to check
--- @param callback The callback function to tell the results to
+-- @param callback (optional, deprecated) The callback function to tell the results to
+-- @return A promise 
 function CheckForBan( steamID, callback )
-    if ( not checkConnection() ) then
-        return callback( false, "No Database Connection" );
-    elseif ( not callback ) then
-        error( "Callback function required!", 2 );
+    if ( not isActive() ) then
+        error( "Not activated yet!", 2 );
     elseif ( not steamID ) then
         error( "SteamID required!", 2 );
     end
-    checkBanBySteamID( steamID, callback );
+    local promise = queries["Check for Bans by SteamID"]
+        :Prepare( config.dbprefix, steamID )
+        :SetCallbackArgs( steamID )
+        :Run()
+        :Then( function( results ) return #results > 0; end );
+    if ( callback ) then
+        handleLegacyCallback(callback, promise);
+    end
+    return promise;
 end
 
 ---
 -- Gets all the admins active on this server
 -- @returns A table.
 function GetAdmins()
+    if ( not isActive() ) then
+        error( "Not activated yet!", 2 );
+    end
     local ret = {}
     for id,data in pairs( admins ) do
         ret[id] = {
@@ -904,8 +928,8 @@ local usage = "\n - Usage: sm_ban <#userid|name> <minutes|0> <reason>";
 concommand.Add( "sm_ban", function(ply, _, args )
     if ( #args < 3 ) then
         return complain( ply, usage:sub(4) );
-    elseif ( not checkConnection() ) then
-        return complain( ply, "The database is not active at the moment. Your command could not be completed." );
+    elseif ( not isActive() ) then
+        return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
     elseif ( not authorised( ply, FLAG_BAN ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
@@ -931,8 +955,8 @@ local usage = "\n - Usage: sm_banip <ip|#userid|name> <minutes|0> <reason>";
 concommand.Add( "sm_banip", function(ply, _, args )
     if ( #args < 3 ) then
         return complain( ply, usage:sub(4) );
-    elseif ( not checkConnection() ) then
-        return complain( ply, "The database is not active at the moment. Your command could not be completed." );
+    elseif ( not isActive() ) then
+        return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
     elseif ( not authorised( ply, FLAG_BAN ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
@@ -974,8 +998,8 @@ local usage = "\n - Usage: sm_addban <minutes|0> <steamid> <reason>";
 concommand.Add( "sm_addban", function(ply, _, args )
     if ( #args < 3 ) then
         return complain( ply, usage:sub(4) );
-    elseif ( not checkConnection() ) then
-        return complain( ply, "The database is not active at the moment. Your command could not be completed." );
+    elseif ( not isActive() ) then
+        return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
     elseif ( not authorised( ply, FLAG_ADDBAN ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
@@ -1004,8 +1028,8 @@ local usage = "\n - Usage: sm_unban <steamid|ip> <reason>";
 concommand.Add( "sm_unban", function(ply, _, args )
     if ( #args < 2 ) then
         return complain( ply, usage:sub(4) );
-    elseif ( not checkConnection() ) then
-        return complain( ply, "The database is not active at the moment. Your command could not be completed." );
+    elseif ( not isActive() ) then
+        return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
     elseif ( not authorised( ply, FLAG_UNBAN ) ) then
         return complain( ply, "You do not have access to this command!" );
     end

@@ -114,7 +114,7 @@ local admins, adminsByID, adminGroups, database;
 local queries = {
     -- BanChkr
     ["Check for Bans"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP()) AND removetype IS NULL AND (authid = '%s' OR ip = '%s' ) LIMIT 1";
-    ["Check for Bans by IP"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND ip = '%s' LIMIT 1";
+    -- ["Check for Bans by IP"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND ip = '%s' LIMIT 1";
     ["Check for Bans by SteamID"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND authid = '%s' LIMIT 1";
     ["Get All Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL;";
     
@@ -185,44 +185,95 @@ local function getAdminDetails( admin )
     end
     return 0, serverip;
 end
+local function errCallback( midtext, hascontext )
+    local text = string.format( "Unable to %s: %%s", midtext );
+    notifyerror( "SQL Error while checking ", self.name, "'s ban status! ", err );
+    if ( hascontext ) then
+        return function( _, err, midformat )
+            if ( midformat ) then
+                notifyerror( string.format( text, midformat, err ) );
+            else
+                notifyerror( string.format( text, err ) );
+            end
+        end
+    else
+        return function( err, midformat )
+            if ( midformat ) then
+                notifyerror( string.format( text, midformat, err ) );
+            else
+                notifyerror( string.format( text, err ) );
+            end
+        end
+    end
+end
+local function handleLegacyCallback( callback, promise )
+    return promise
+        :Done( function( result ) callback(true,  result); end )
+        :Fail( function( errmsg ) callback(false, errmsg); end );
+end
 local function blankCallback() end
 
+--[[ Set up Queries ]]--
+for key, qtext in pairs( queries ) do
+    queries[key] = db:PrepareQuery( qtext );
+end
 
+queries["Check for Bans"]:SetCallbacks( {
+    Progress: function( data, name, steamID )
+        notifymessage( name, " has been identified as ", data.name, ", who is banned. Kicking ... " );
+        kickid( steamID );
+        banid( steamID );
+        queries["Log Join Attempt"]
+            :Prepare( config.dbprefix, config.serverid, os.time(), name, data.bid )
+            :SetCallbackArgs( name )
+            :Run();
+    end;
+    Fail: errCallback( "check %s's ban status" );
+} );
+queries["Check for Bans by SteamID"]:SetCallbacks( {
+    Fail: errCallback( "check %s's ban status" );
+} );
+queries["Get All Active Bans"]:SetCallbacks( {
+    Fail: errCallback( "check %s's ban status" );
+} );
+["Log Join Attempt"]:SetCallbacks( {
+    Fail: errCallback( "store %s's foiled join attempt" );
+} );
 --[[ Query Functions ]]--
-local checkBan, banCheckerOnData, banCheckerOnFailure;
-local joinAttemptLoggerOnFailure;
+local checkBan
 local adminGroupLoaderOnSuccess, adminGroupLoaderOnFailure;
 local loadAdmins, adminLoaderOnSuccess, adminLoaderOnData, adminLoaderOnFailure;
 local doBan, banOnSuccess, banOnFailure;
 local startDatabase, databaseOnConnected, databaseOnFailure;
 local activeBansOnSuccess, activeBansOnFailure;
 local doUnban, unbanOnFailure;
-local checkBanBySteamID, checkSIDOnSuccess, checkSIDOnFailure;
+local checkBanBySteamID
 
 -- Functions --
-function checkBan( ply, steamID, ip, name )
-    local queryText = queries["Check for Bans"]:format( config.dbprefix, steamID, ip );
-    local query = database:query( queryText );
-    if ( query ) then
-        query.steamID   = steamID;
-        query.player    = ply;
-        query.name      = name;
-        query.onData    = banCheckerOnData;
-        query.onFailure = banCheckerOnFailure;
-        query:start();
-    else
-        table.insert( database.pending, {queryText, steamID, name, ply} );
-        CheckStatus();
-    end
+--
+-- See if a player is banned and kick/ban them if they are.
+-- @param steamID The player's SteamID
+-- @param ip The player's IP
+-- @param name The player's name for logging porpoises
+function checkBan( steamID, ip, name )
+    return queries["Check for Bans"]
+        :Prepare( config.dbprefix, steamID, ip )
+        :SetCallbackArgs( name, steamID )
+        :Run();
 end
 
+local function checkBanBySteamIDThen( results )
+    return #results > 0;
+end
 function checkBanBySteamID( steamID, callback )
-    local query = database:query( queries["Check for Bans by SteamID"]:format( config.dbprefix, steamID ) );
-        query.steamID   = steamID;
-        query.callback  = callback;
-        query.onSuccess = checkSIDOnSuccess;
-        query.onFailure = checkSIDOnFailure;
-        query:start();
+    return handleLegacyCallback(
+        callback,
+        queries["Check for Bans by SteamID"]
+            :Prepare( config.dbprefix, steamID )
+            :SetCallbackArgs( steamID )
+            :Run()
+            :Then(checkBanBySteamIDThen)
+        );
 end
 
 function loadAdmins()
@@ -279,16 +330,6 @@ function doBan( steamID, ip, name, length, reason, admin, callback )
     end
 end
 -- Data --
-function banCheckerOnData( self, data )
-    notifymessage( self.name, " has been identified as ", data.name, ", who is banned. Kicking ... " );
-    kickid( self.steamID );
-    banid( self.steamID );
-    local query = database:query( queries["Log Join Attempt"]:format( config.dbprefix, config.serverid, os.time(), self.name, data.bid ) );
-    query.onFailure = joinAttemptLoggerOnFailure;
-    query.name = self.name;
-    query:start();
-end
-
 function adminLoaderOnSuccess( self )
     notifymessage( "Finished loading admins!" );
     for _, ply in pairs( player.GetAll() ) do
@@ -404,19 +445,7 @@ function activeBansOnSuccess( self )
     self.callback( ret );
 end
 
-function checkSIDOnSuccess( self )
-    self.callback( #self:getData() > 0 );
-end
-
 -- Failure --
-function banCheckerOnFailure( self, err )
-    notifyerror( "SQL Error while checking ", self.name, "'s ban status! ", err );
-    kickid( self.steamID, "Failed to detect if you are banned!" );
-end
-
-function joinAttemptLoggerOnFailure( self, err )
-    notifyerror( "SQL Error while storing ", self.name, "'s foiled join attempt! ", err );
-end
 
 function adminGroupLoaderOnFailure( self, err )
     notifyerror( "SQL Error while loading the admin groups! ", err );
@@ -446,10 +475,6 @@ function unbanOnFailure( self, err )
     notifyerror( "SQL Error while removing the ban for ", self.id, "! ", err );
 end
 
-function checkSIDOnFailure( self, err )
-    notifyerror( "SQL Error while checking ", self.steamID, "'s ban status! ", err );
-    self.callback( false, err );
-end
 --[[ Hooks ]]--
 do
     local function ShutDown()
@@ -466,7 +491,7 @@ do
             notifyerror( "Player ", ply:Name(), " joined, but SourceBans.lua is not active!" );
             return;
         end
-        checkBan( ply, steamID, getIP( ply), ply:Name( ) );
+        checkBan( steamID, getIP( ply ), ply:Name( ) );
         if ( not admins ) then
             return;
         end
@@ -657,25 +682,9 @@ function SetConfig( key, value )
 end
 
 
----
--- Checks the status of the database and recovers if there are errors
--- WARNING: This function is blocking. It is auto-called every 5 minutes.
+-- No longer required
 function CheckStatus()
-    if ( not database or database.automaticretry ) then return; end
-    local status = database:status();
-    if ( status == STATUS_WORKING or status == STATUS_READY ) then
-        return;
-    elseif ( status == STATUS_ERROR ) then
-        notifyerror( "The database object has suffered an inernal error and will be recreated." );
-        local pending = database.pending;
-        startDatabase();
-        database.pending = pending;
-    else
-        notifyerror( "The server has lost connection to the database. Retrying..." )
-        database:connect();
-    end
 end
-timer.Create( "SourceBans.lua - Status Checker", 300, 0, CheckStatus );
 
 ---
 -- Checks to see if a SteamID is banned from the system

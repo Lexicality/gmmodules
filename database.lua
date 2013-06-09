@@ -170,7 +170,7 @@ function Database:PrepareQuery( text )
     if ( not text ) then
         error( "No query text specified!", 2 );
     end
-    local _, narg = string.gsub( text, '(%%[diouXxfFeEgGaAcsb])', '' );
+    local _, narg = string.gsub( string.gsub( text, '%%%%', '' ), '(%%[diouXxfFeEgGaAcsb])', '' );
     return new( PreparedQuery, {
         Text    = text,
         DB      = self,

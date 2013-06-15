@@ -1,2 +1,4 @@
 *.swp
 *.sublime*
+*.html
+html/

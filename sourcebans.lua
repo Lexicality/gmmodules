@@ -1,6 +1,6 @@
 --[[
     ~ Sourcebans GLua Module ~
-    Copyright (c) 2011-2013 Lexi Robinson
+    Copyright (c) 2011-2013 Lex Robinson
 
     Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
     associated documentation files ( the "Software" ), to deal in the Software without restriction,
@@ -48,7 +48,7 @@ end
 ---
 -- Sourcebans.lua provides an interface to SourceBans through GLua, so that SourceMod is not required.
 -- It also attempts to duplicate the effects that would be had by running SourceBans, such as the concommand and convars it creates.
--- @author Lex Robinson - lexi at lexi dot org dot uk
+-- @author Lex Robinson - lexi at lex dot me dot uk
 -- @copyright 2011-2013 Lex Robinson - This code is released under the MIT License
 -- @release version 2.0
 module( "sourcebans" );

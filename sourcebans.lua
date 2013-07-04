@@ -290,12 +290,17 @@ function startDatabase( deferred )
     -- I don't see how but it might I guess
     if ( isActive() ) then
         if ( deferred ) then
-            deferred:Resolve();
+            return deferred:Resolve();
         end
     end
     local deferred = deferred or Deferred();
     local cb = errCallback( "activate Sourcebans" );
     db:Connect()
+        :Fail( function( errmsg )
+            cb( errmsg );
+            notifymessage( "Setting a reconnection timer for 60 seconds!" );
+            timer.Simple( 60, function() startDatabase( deferred ); end );
+        end );
         :Then( function()
             if ( config.serverid < 0 ) then
                 return queries["Look up serverID"]
@@ -305,19 +310,12 @@ function startDatabase( deferred )
         end )
         :Then( function()
             deferred:Resolve();
-        end )
-        :Then( function()
             for _, ply in pairs( player.GetAll() ) do
                 checkBan( ply );
             end
         end)
         :Then( loadAdmins )
-        :Fail( function( errmsg )
-            cb( errmsg );
-            notifymessage( "Setting a reconnection timer for 60 seconds!" );
-            timer.Simple( 60, function() startDatabase( deferred ); end );
-        end );
-    return deferred;
+    return deferred:Promise();
 end
 
 function doUnban( query, id, reason, admin )

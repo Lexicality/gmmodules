@@ -225,7 +225,7 @@ for key, qtext in pairs( queries ) do
 end
 
 queries["Check for Bans"]:SetCallbacks( {
-    Progress: function( data, name, steamID )
+    Progress = function( data, name, steamID )
     -- TODO: Reason, time left
         notifymessage( name, " has been identified as ", data.name, ", who is banned. Kicking ... " );
         kickid( steamID );
@@ -235,25 +235,25 @@ queries["Check for Bans"]:SetCallbacks( {
             :SetCallbackArgs( name )
             :Run();
     end;
-    Fail: errCallback( "check %s's ban status" );
+    Fail = errCallback( "check %s's ban status" );
 } );
 queries["Check for Bans by SteamID"]:SetCallbacks( {
-    Fail: errCallback( "check %s's ban status" );
+    Fail = errCallback( "check %s's ban status" );
 } );
 queries["Get All Active Bans"]:SetCallbacks( {
-    Fail: errCallback( "aquire every ban ever" );
+    Fail = errCallback( "aquire every ban ever" );
 } );
 queries["Get Active Bans"]:SetCallbacks( {
-    Fail: errCallback( "aquire page #%d of bans" );
+    Fail = errCallback( "aquire page #%d of bans" );
 } );
 queries["Log Join Attempt"]:SetCallbacks( {
-    Fail: errCallback( "store %s's foiled join attempt" );
+    Fail = errCallback( "store %s's foiled join attempt" );
 } );
 queries["Look up serverID"]:SetCallbacks( {
-    Progress: function( data )
+    Progress = function( data )
         config.serverid = data.sid;
     end;
-    Fail: errCallback( "lookup the server's ID" );
+    Fail = errCallback( "lookup the server's ID" );
 });
 --[[ Query Functions ]]--
 local checkBan
@@ -300,7 +300,7 @@ function startDatabase( deferred )
             cb( errmsg );
             notifymessage( "Setting a reconnection timer for 60 seconds!" );
             timer.Simple( 60, function() startDatabase( deferred ); end );
-        end );
+        end )
         :Then( function()
             if ( config.serverid < 0 ) then
                 return queries["Look up serverID"]
@@ -314,7 +314,7 @@ function startDatabase( deferred )
                 checkBan( ply );
             end
         end)
-        :Then( loadAdmins )
+        :Then( loadAdmins );
     return deferred:Promise();
 end
 
@@ -468,7 +468,7 @@ do
         -- Always have this running.
         idLookup[steamID] = ply;
 
-        if ( not  ) then
+        if ( not isActive() ) then
             notifyerror( "Player ", ply:Name(), " joined, but SourceBans.lua is not active!" );
             return;
         end

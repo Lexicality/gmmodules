@@ -222,7 +222,7 @@ end;
 -- Also implements all the promise functions because why not
 -- @name Deferred
 -- @class table
-local Deferred = {
+Deferred = {
 	_IsDeferred = true;
 	-- Proxies
 	_IsPromise = true;

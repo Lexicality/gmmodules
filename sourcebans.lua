@@ -276,6 +276,7 @@ function checkBan( ply )-- steamID, ip, name )
 end
 
 function loadAdmins()
+    if not isActive() then return end
     admins = {};
     adminGroups = {};
     adminsByID = {};

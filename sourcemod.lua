@@ -31,6 +31,12 @@ sourcebans.SetConfig("dogroups", false);             -- Set user groups or not. 
 
 sourcebans.Activate();
 
+local function notifymessage( ... )
+    local words = table.concat( { "[" , os.date() , "][sourcemod.lua] " , ... }, "" ) .. "\n";
+    ServerLog( words );
+    Msg( words );
+end
+
 -- Borrowed from my gamemode, Applejack
 local function playerGet( id )
     local res, len, name, num, pname, lon;
@@ -100,7 +106,7 @@ local function complainer( ply, pl, time, reason, usage )
         return complain( ply, "Invalid time!" .. usage );
     elseif ( reason == "" ) then
         return complain( ply, "Invalid reason!" .. usage );
-    elseif ( time == 0 and not authorised( ply, FLAG_PERMA ) ) then
+    elseif ( time == 0 and not authorised( ply, sourcebans.FLAG_PERMA ) ) then
         return complain( ply, "You are not authorised to permaban!" );
     end
     return true;
@@ -114,11 +120,9 @@ end, nil, "Reload the admin list from the SQL");
 
 local usage = "\n - Usage: sm_psay <#userid|name|steamid> <words>";
 concommand.Add( "sm_psay", function(ply, _, args )
-    if ( nocmds and ply:IsValid() ) then
-        return not4u( ply );
-    elseif ( #args < 2 ) then
+    if ( #args < 2 ) then
         return complain( ply, usage:sub(4) );
-    elseif ( not authorised( ply, FLAG_CHAT ) ) then
+    elseif ( not authorised( ply, sourcebans.FLAG_CHAT ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
     local pl, words = table.remove( args,1), table.concat( args, " " ):Trim( );
@@ -137,11 +141,9 @@ end, nil, "Sends a private message to a player" .. usage);
 
 local usage = "\n - Usage: sm_say <words>";
 concommand.Add( "sm_say", function(ply, _, args )
-    if ( nocmds and ply:IsValid() ) then
-        return not4u( ply );
-    elseif ( #args < 1 ) then
+    if ( #args < 1 ) then
         return complain( ply, usage:sub(4) );
-    elseif ( not authorised( ply, FLAG_CHAT ) ) then
+    elseif ( not authorised( ply, sourcebans.FLAG_CHAT ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
     local words = table.concat( args, " "):Trim( );
@@ -159,11 +161,9 @@ end, nil, "Sends a message to everyone" .. usage);
 
 local usage = "\n - Usage: sm_csay <words>";
 concommand.Add( "sm_csay", function(ply, _, args )
-    if ( nocmds and ply:IsValid() ) then
-        return not4u( ply );
-    elseif ( #args < 1 ) then
+    if ( #args < 1 ) then
         return complain( ply, usage:sub(4) );
-    elseif ( not authorised( ply, FLAG_CHAT ) ) then
+    elseif ( not authorised( ply, sourcebans.FLAG_CHAT ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
     local words = table.concat( args, " "):Trim( );
@@ -181,11 +181,9 @@ end, nil, "Sends a message to everyone in the center of their screen" .. usage);
 
 local usage = "\n - Usage: sm_chat <words>";
 concommand.Add( "sm_chat", function(ply, _, args )
-    if ( nocmds and ply:IsValid() ) then
-        return not4u( ply );
-    elseif ( #args < 1 ) then
+    if ( #args < 1 ) then
         return complain( ply, usage:sub(4) );
-    elseif ( not authorised( ply, FLAG_CHAT ) ) then
+    elseif ( not authorised( ply, sourcebans.FLAG_CHAT ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
     local words = table.concat( args, " "):Trim( );
@@ -207,7 +205,7 @@ concommand.Add( "sm_ban", function(ply, _, args )
         return complain( ply, usage:sub(4) );
     elseif ( not sourcebans.IsActive() ) then
         return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
-    elseif ( not authorised( ply, FLAG_BAN ) ) then
+    elseif ( not authorised( ply, sourcebans.FLAG_BAN ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
     local pl, time, reason = table.remove( args,1), tonumber( table.remove( args,1) ), table.concat(args, " " ):Trim( );
@@ -234,7 +232,7 @@ concommand.Add( "sm_banip", function(ply, _, args )
         return complain( ply, usage:sub(4) );
     elseif ( not sourcebans.IsActive() ) then
         return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
-    elseif ( not authorised( ply, FLAG_BAN ) ) then
+    elseif ( not authorised( ply, sourcebans.FLAG_BAN ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
     local id, time, reason = table.remove( args,1), tonumber( table.remove( args,1) ), table.concat(args, " " ):Trim( );
@@ -278,7 +276,7 @@ concommand.Add( "sm_addban", function(ply, _, args )
         return complain( ply, usage:sub(4) );
     elseif ( not sourcebans.IsActive() ) then
         return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
-    elseif ( not authorised( ply, FLAG_ADDBAN ) ) then
+    elseif ( not authorised( ply, sourcebans.FLAG_ADDBAN ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
     local time, id, reason = tonumber( table.remove( args,1)), getSteamID( args ), table.concat(args, " " ):Trim( );
@@ -288,7 +286,7 @@ concommand.Add( "sm_addban", function(ply, _, args )
         return complain( ply, "Invalid time!" .. usage );
     elseif ( reason == "" ) then
         return complain( ply, "Invalid reason!" .. usage );
-    elseif ( time == 0 and not authorised( ply, FLAG_PERMA ) ) then
+    elseif ( time == 0 and not authorised( ply, sourcebans.FLAG_PERMA ) ) then
         return complain( ply, "You are not authorised to permaban!" );
     end
     local function callback( res, err )
@@ -308,7 +306,7 @@ concommand.Add( "sm_unban", function(ply, _, args )
         return complain( ply, usage:sub(4) );
     elseif ( not sourcebans.IsActive() ) then
         return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
-    elseif ( not authorised( ply, FLAG_UNBAN ) ) then
+    elseif ( not authorised( ply, sourcebans.FLAG_UNBAN ) ) then
         return complain( ply, "You do not have access to this command!" );
     end
     local id, reason, func;

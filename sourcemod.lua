@@ -6,6 +6,7 @@
     *WARNING* This is not a module! Put it in /lua/autorun!
 
     This file provides various concommands from SourceMod/SourceBans
+    v1.0.0-alpha1
 --]]
 
 local sourcebans = require "sourcebans";

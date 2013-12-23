@@ -23,7 +23,7 @@
 
 -- These are put here to lower the amount of upvalues and so they're grouped together
 -- They provide something like the documentation the SM ones do. 
-CreateConVar( "sb_version", "2.0", FCVAR_SPONLY + FCVAR_REPLICATED + FCVAR_NOTIFY, "The current version of the SourceBans.lua module" );
+CreateConVar( "sb_version", "2.0.0", FCVAR_SPONLY + FCVAR_REPLICATED + FCVAR_NOTIFY, "The current version of the SourceBans.lua module" );
 -- This creates a fake concommand that doesn't exist but makes the engine think it does. Useful.
 AddConsoleCommand( "sb_reload", "Doesn't do anything - Legacy from the SourceMod version." );
 
@@ -41,11 +41,11 @@ local database = require( 'database' );
 -- It also attempts to duplicate the effects that would be had by running SourceBans, such as the concommand and convars it creates.
 -- @author Lex Robinson - lexi at lex dot me dot uk
 -- @copyright 2011-2013 Lex Robinson - This code is released under the MIT License
--- @release version 2.0
+-- @release version 2.0.0
 module( "sourcebans" );
 --[[
     CHANGELOG
-    2.0   Rewrote database handling & added fixes provided by Blackawps
+    2.0.0 Rewrote database handling & added fixes provided by Blackawps
     1.54  Fixed the serverID grabber not actually grabbing serverIDs
     1.53  sm_rehash now goes through all online players and makes sure their group is up to date.
     1.521 Fixed a hang if an admin had no srv_flags and no srv_group

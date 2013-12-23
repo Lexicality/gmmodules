@@ -99,17 +99,33 @@ local function authorised( ply, flag )
     return ply.sourcebansinfo.zflag or string.find( ply.sourcebansinfo.srv_flags, flag );
 end
 
-local function complainer( ply, pl, time, reason, usage )
+local function complainPlayer( ply, pl, usage )
     if ( not pl ) then
         return complain( ply, "Invalid player!" .. usage );
-    elseif ( not time or time < 0 ) then
+    end
+    return true;
+end
+
+local function complainTime( ply, time, usage )
+    if ( not time or time < 0 ) then
         return complain( ply, "Invalid time!" .. usage );
-    elseif ( reason == "" ) then
-        return complain( ply, "Invalid reason!" .. usage );
     elseif ( time == 0 and not authorised( ply, sourcebans.FLAG_PERMA ) ) then
         return complain( ply, "You are not authorised to permaban!" );
     end
     return true;
+end
+
+local function complainReason( ply, reason, usage )
+    if ( reason == "" ) then
+        return complain( ply, "Invalid reason!" .. usage );
+    end
+    return true;
+end
+
+local function complainer( ply, pl, time, reason, usage )
+    return  complainPlayer( ply, pl, usage )
+        and complainTime( ply, time, usage )
+        and complainReason( ply, reason, usage );
 end
 
 concommand.Add( "sm_rehash", function(ply, cmd )
@@ -278,12 +294,8 @@ concommand.Add( "sm_addban", function(ply, _, args )
     local time, id, reason = tonumber( table.remove( args,1)), getSteamID( args ), table.concat(args, " " ):Trim( );
     if ( not id ) then
         return complain( ply, "Invalid SteamID!" .. usage );
-    elseif ( not time or time < 0 ) then
-        return complain( ply, "Invalid time!" .. usage );
-    elseif ( reason == "" ) then
-        return complain( ply, "Invalid reason!" .. usage );
-    elseif ( time == 0 and not authorised( ply, sourcebans.FLAG_PERMA ) ) then
-        return complain( ply, "You are not authorised to permaban!" );
+    elseif ( not ( complainTime( ply, time, usage ) and complainReason( ply, reason, usage ) ) ) then
+        return
     end
     local function callback( res, err )
         if ( res ) then
@@ -317,8 +329,8 @@ concommand.Add( "sm_unban", function(ply, _, args )
         return complain( ply, "Invalid SteamID!" .. usage );
     end
     reason = table.concat( args, " "):Trim( )
-    if ( reason == "" ) then
-        return complain( ply, "Invalid reason!" .. usage );
+    if ( not complainReason( ply, reason, usage ) ) then
+        return;
     end
     func( id, reason, ply );
     complain( ply, "Your unban request has been sent to the database." );

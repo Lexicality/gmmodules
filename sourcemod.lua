@@ -1,11 +1,11 @@
 --[[
-	~ SourceMod Replacement Service ~
+    ~ SourceMod Replacement Service ~
     Copyright (c) 2011-2013 Lex Robinson
     This code is freely available under the terms of the MIT license.
 
-  	*WARNING* This is not a module! Put it in /lua/autorun!
+    *WARNING* This is not a module! Put it in /lua/autorun!
 
-  	This file provides various concommands from SourceMod/SourceBans
+    This file provides various concommands from SourceMod/SourceBans
 --]]
 
 local sourcebans = require "sourcebans";
@@ -17,7 +17,7 @@ sourcebans.SetConfig("username", "root");            -- Database Login name
 sourcebans.SetConfig("password", "");                -- Database Login Password
 sourcebans.SetConfig("database", "sourcebans");      -- Database 'database' or 'schema' selection
 sourcebans.SetConfig("dbprefix", "sbans");           -- Prefix for tables in the database. (This example would say your tables are called sbans_bans and so on)
-sourcebans.SetConfig("portnumb", 3306);	             -- Database Port number
+sourcebans.SetConfig("portnumb", 3306);              -- Database Port number
 sourcebans.SetConfig("serverid", 1);                 -- The ID given to this server by the SourceBans website
 sourcebans.SetConfig("website", "bans.example.com"); -- The URL where people can find your sourcebans install (Do not put http:// or the kick reason will break!)
 sourcebans.SetConfig("showbanreason", false);        -- Show the ban reason in the kick message. Do not use if you do not have gatekeeper installed or you will crash people sometimes.
@@ -238,7 +238,7 @@ concommand.Add( "sm_banip", function(ply, _, args )
     local id, time, reason = table.remove( args,1), tonumber( table.remove( args,1) ), table.concat(args, " " ):Trim( );
     local pl;
     if ( string.find( id, "%d+%.%d+%.%d+%.%d+" ) ) then
-    	id = string.match( id, "(%d+%.%d+%.%d+%.%d+)" );
+        id = string.match( id, "(%d+%.%d+%.%d+%.%d+)" );
         for _, ply in pairs( player.GetAll() ) do
             if ( ply:IPAddress() == id ) then
                 pl = ply;
@@ -249,7 +249,7 @@ concommand.Add( "sm_banip", function(ply, _, args )
     else
         pl = playerGet( id );
         if ( pl ) then
-        	id = ply:IPAddress();
+            id = ply:IPAddress();
         end
     end
     if ( not complainer( ply, pl, time, reason, usage ) ) then

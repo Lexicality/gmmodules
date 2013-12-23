@@ -27,11 +27,11 @@ CreateConVar( "sb_version", "2.0", FCVAR_SPONLY + FCVAR_REPLICATED + FCVAR_NOTIF
 -- This creates a fake concommand that doesn't exist but makes the engine think it does. Useful.
 AddConsoleCommand( "sb_reload", "Doesn't do anything - Legacy from the SourceMod version." );
 
-local error, ErrorNoHalt, GetConVarNumber, GetConVarString, Msg, pairs, print, ServerLog, tonumber, tostring, tobool =
-      error, ErrorNoHalt, GetConVarNumber, GetConVarString, Msg, pairs, print, ServerLog, tonumber, tostring, tobool ;
+local error, ErrorNoHalt, GetConVarNumber, GetConVarString, Msg, pairs, print, ServerLog, tonumber, tostring, tobool, IsValid =
+      error, ErrorNoHalt, GetConVarNumber, GetConVarString, Msg, pairs, print, ServerLog, tonumber, tostring, tobool, IsValid ;
 
-local game, hook, os, player, string, table, timer =
-      game, hook, os, player, string, table, timer ;
+local game, hook, os, player, string, table, timer, bit =
+      game, hook, os, player, string, table, timer, bit ;
 
 local Deferred = require( 'promises' );
 local database = require( 'database' );

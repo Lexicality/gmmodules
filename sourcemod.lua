@@ -238,35 +238,31 @@ concommand.Add( "sm_banip", function(ply, _, args )
     local id, time, reason = table.remove( args,1), tonumber( table.remove( args,1) ), table.concat(args, " " ):Trim( );
     local pl;
     if ( string.find( id, "%d+%.%d+%.%d+%.%d+" ) ) then
+    	id = string.match( id, "(%d+%.%d+%.%d+%.%d+)" );
         for _, ply in pairs( player.GetAll() ) do
-            if ( ply:SteamID() == id ) then
-                pl = ply; 
+            if ( ply:IPAddress() == id ) then
+                pl = ply;
                 break;
             end
         end
-        id = cleanIP( id );
+        -- FIXME: If there is no player connected on this ip but ply has FLAG_RCON, this should add the IP on its own.
     else
-        pl = playerGet( id )
-        id = nil;
+        pl = playerGet( id );
         if ( pl ) then
-            id = getIP( pl );
+        	id = ply:IPAddress();
         end
     end
     if ( not complainer( ply, pl, time, reason, usage ) ) then
         return;
     end
-    local name = pl:Name();
-    kickid( pl:SteamID(), config.showbanreason and "Banned: " .. reason );
-    game.ConsoleCommand( "addip 5 " .. id .. "\n" );
     local function callback( res, err )
         if ( res ) then
-            complain( ply, "sm_banip: " .. name .. " has been IP banned successfully." )
+            complain( ply, "sm_banip: " .. id .. " has been banned successfully." )
         else
-            complain( ply, "sm_banip: " .. name .. " has not been IP banned. " .. err );
+            complain( ply, "sm_banip: " .. id .. " has not been banned. " .. err );
         end
     end
-    error("Whoops! Not yet worked out how to forward this function");
-    -- FIXME doBan( '', id, name, time * 60, reason, ply, callback )
+    sourcebans.BanPlayer( pl, time * 60, reason, ply, callback );
     complain( ply, "sm_banip: Your ban request has been sent to the database." );
 end, nil, "Bans a player by only their IP" .. usage);
 

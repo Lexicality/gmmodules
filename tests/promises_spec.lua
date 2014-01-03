@@ -8,22 +8,34 @@ local Deferred = require 'promises';
 
 -- Tests stolen from https:--github.com/domenic/promise-tests
 function fulfilled( value )
-	local d = Deferred();
-	d:Resolve( value );
-	return d:Promise();
+    local d = Deferred();
+    d:Resolve( value );
+    return d:Promise();
 end
 function rejected( reason )
-	local d = Deferred();
-	d:Reject( reason );
-	return d:Promise();
+    local d = Deferred();
+    d:Reject( reason );
+    return d:Promise();
 end
 function pending()
-	local d = Deferred();
-	return {
-		promise = function() return d:Promise(); end;
-		fulfill = function(value) return d:Resolve(value); end;
-		reject = function(reason) return d:Reject(reason); end;
-	};
+    local d = Deferred();
+    return {
+        promise = function() return d:Promise(); end;
+        fulfill = function(value) return d:Resolve(value); end;
+        reject = function(reason) return d:Reject(reason); end;
+    };
+end
+
+local other = {}; -- a dummy value we don't want to be strict equal to
+local sentinel = {}; -- a sentinel fulfillment value to test for with strict equality
+function callbackAggregator(times, ultimateCallback)
+    local soFar = 0;
+    return function ()
+        soFar = soFar + 1;
+        if (soFar == times) then
+            ultimateCallback();
+        end
+    end
 end
 
 describe("[Promises/A] Basic characteristics of `then`", function ()
@@ -117,5 +129,70 @@ describe("[Promises/A] State transitions", function ()
         pcall(function()
             tuple.fulfill(other);
         end)
+    end);
+end);
+
+
+describe("[Promises/A] Chaining off of a fulfilled promise", function ()
+    describe("when the first fulfillment callback returns a new value", function ()
+        it("should call the second fulfillment callback with that new value", function (done)
+            fulfilled(other):Then(function ()
+                return sentinel;
+            end):Then(function (value)
+                assert.are.equal(value, sentinel);
+            end);
+        end);
+    end);
+
+    describe("when the first fulfillment callback throws an error", function ()
+        it("should call the second rejection callback with that error as the reason", function (done)
+            fulfilled(other):Then(function ()
+                error( sentinel );
+            end):Then(null, function (reason)
+                assert.are.equal(reason, sentinel);
+            end);
+        end);
+    end);
+
+    describe("with only a rejection callback", function ()
+        it("should call the second fulfillment callback with the original value", function (done)
+            fulfilled(sentinel):Then(null, function ()
+                return other;
+            end):Then(function (value)
+                assert.are.equal(value, sentinel);
+            end);
+        end);
+    end);
+end);
+
+describe("[Promises/A] Chaining off of a rejected promise", function ()
+    describe("when the first rejection callback returns a new value", function ()
+        it("should call the second fulfillment callback with that new value", function (done)
+            rejected(other):Then(null, function ()
+                return sentinel;
+            end):Then(function (value)
+                assert.are.equal(value, sentinel);
+            end);
+        end);
+    end);
+
+    describe("when the first rejection callback throws a new reason", function ()
+        it("should call the second rejection callback with that new reason", function (done)
+            rejected(other):Then(null, function ()
+                error( sentinel );
+            end):Then(null, function (reason)
+                assert.are.equal(reason, sentinel);
+            end);
+        end);
+    end);
+
+    describe("when there is only a fulfillment callback", function ()
+        it("should call the second rejection callback with the original reason", function (done)
+            rejected(sentinel):Then(function ()
+                return other;
+            end):Then(null, function (reason)
+                assert.are.equal(reason, sentinel);
+            end);
+        end);
     end);
 end);

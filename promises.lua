@@ -24,9 +24,9 @@ local Deferred = nil;
 -- @param ... Stuff to pass to the ctor
 -- @return ye new object
 local function new( tab, ... )
-    local ret = setmetatable( {}, {__index=tab} );
-    ret:_init( ... );
-    return ret;
+	local ret = setmetatable( {}, {__index=tab} );
+	ret:_init( ... );
+	return ret;
 end
 
 --
@@ -35,13 +35,13 @@ end
 -- @param self The selfen as above
 -- @return function( ... ) return func( self, ... ) end
 local function bind( func, self )
-    if ( not func ) then
-        return;
-    elseif ( self ) then
-        return function( ... ) return func( self, ... ); end
-    else
-        return func;
-    end
+	if ( not func ) then
+		return;
+	elseif ( self ) then
+		return function( ... ) return func( self, ... ); end
+	else
+		return func;
+	end
 end
 
 --
@@ -72,9 +72,9 @@ local Promise = {
 -- If done or fail returns a value, the returned promise is resolved with that value.
 -- If they cause an error, the returned promise is rejected with the error.
 -- If they return a Promise object, any action taken on that promise object will be forwarded to the returned promise object.
--- @param done An optional function that is called when the Promise is resolved. 
--- @param fail An optional function that is called when the Promise is rejected. 
--- @param prog An optional function that is called when progress notifications are sent to the Promise. 
+-- @param done An optional function that is called when the Promise is resolved.
+-- @param fail An optional function that is called when the Promise is rejected.
+-- @param prog An optional function that is called when progress notifications are sent to the Promise.
 -- @return A new promise object that will be resolved, rejected or notified when this one is - after the values have been filtered through the above functions.
 function Promise:Then( done, fail, prog )
 	local def = Deferred();

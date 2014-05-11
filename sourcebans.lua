@@ -22,7 +22,7 @@
 --]]
 
 -- These are put here to lower the amount of upvalues and so they're grouped together
--- They provide something like the documentation the SM ones do. 
+-- They provide something like the documentation the SM ones do.
 CreateConVar( "sb_version", "2.0.0", FCVAR_SPONLY + FCVAR_REPLICATED + FCVAR_NOTIFY, "The current version of the SourceBans.lua module" );
 -- This creates a fake concommand that doesn't exist but makes the engine think it does. Useful.
 AddConsoleCommand( "sb_reload", "Doesn't do anything - Legacy from the SourceMod version." );
@@ -110,16 +110,16 @@ local queries = {
     ["Check for Bans by SteamID"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND authid = '%s' LIMIT 1";
     ["Get All Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL;";
     ["Get Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE (length = 0 OR ends > UNIX_TIMESTAMP()) AND removetype IS NULL LIMIT %d OFFSET %d;";
-    
+
     ["Log Join Attempt"] = "INSERT INTO %s_banlog ( sid, time, name, bid) VALUES( %i, %i, '%s', %i )";
-    
+
     -- Admins
     ["Select Admin Groups"] = "SELECT flags, immunity, name FROM %s_srvgroups";
     ["Select Admins"] = "SELECT a.aid, a.user, a.authid, a.srv_group, a.srv_flags, a.immunity FROM %s_admins a, %s_admins_servers_groups g WHERE g.server_id = %i AND g.admin_id = a.aid";
 
     -- Misc
     ["Look up serverID"] = "SELECT sid FROM %s_servers WHERE ip = '%s' AND port = '%s' LIMIT 1";
-    
+
     -- Bannin
     ["Ban Player"] = "INSERT INTO %s_bans ( ip, authid, name, created, ends, length, reason, aid, adminIp, sid, country) VALUES('%s', '%s', '%s', %i, %i, %i, '%s', %i, '%s', %i, ' ' )";
     -- Unbannin
@@ -388,7 +388,7 @@ function adminGroupLoaderOnSuccess( self )
     query.onSuccess = adminLoaderOnSuccess;
     query.onFailure = adminLoaderOnFailure;
     query.onData = adminLoaderOnData;
-    query:start();  
+    query:start();
     notifymessage( "Loading Admins . . ." );
 end
 
@@ -402,7 +402,7 @@ local function activeBansDataTransform( results )
     for _, data in pairs( results ) do
         if ( data.aid ~= 0 ) then
             local admin = adminsByID[data.aid];
-            if ( not admin ) then -- 
+            if ( not admin ) then --
                 adminName = "Unknown";
                 adminID = "STEAM_ID_UNKNOWN";
             else
@@ -413,7 +413,7 @@ local function activeBansDataTransform( results )
             adminName = "Console";
             adminID = "STEAM_ID_SERVER";
         end
-        
+
         ret[#ret + 1] = {
             IPAddress   = data.ip;
             SteamID     = data.authid;
@@ -477,11 +477,11 @@ do
             notifymessage( ply:Name( ), " has joined, and they are a ", tostring(info.srv_group ), "!" );
         end
     end
-    
+
     local function PlayerDisconnected( ply )
         idLookup[ply:SteamID()] = nil;
     end
-        
+
     hook.Add( "PlayerAuthed", "SourceBans.lua - PlayerAuthed", PlayerAuthed );
     hook.Add( "PlayerDisconnected", "SourceBans.lua - PlayerDisconnected", PlayerDisconnected );
 end
@@ -702,7 +702,7 @@ end
 -- Checks to see if a SteamID is banned from the system
 -- @param steamID The SteamID to check
 -- @param callback (optional, deprecated) The callback function to tell the results to
--- @return A promise 
+-- @return A promise
 function CheckForBan( steamID, callback )
     if ( not isActive() ) then
         error( "Not activated yet!", 2 );

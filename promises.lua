@@ -77,7 +77,7 @@ local Promise = {
 -- @param prog An optional function that is called when progress notifications are sent to the Promise.
 -- @return A new promise object that will be resolved, rejected or notified when this one is - after the values have been filtered through the above functions.
 function Promise:Then( done, fail, prog )
-	local def = Deferred();
+	local def = new(Deferred);
 	if ( type( done ) == 'function' ) then
 		local d = done;
 		done = function( ... )

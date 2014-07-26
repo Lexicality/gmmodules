@@ -279,4 +279,17 @@ describe("Database:Connect", function()
 		database.RegisterDBMethod("Mock 2", invalidDB);
 		database.RegisterDBMethod("Mock 3", invalidDB);
 	end)
+
+	-- Stubs are tables and tables can't go into then
+	local function thenable(a)
+		return function(...) return a(...) end
+	end
+
+	it("Should return itself on successful connect", function()
+		local a, b = stub.new(), stub.new();
+		db:Connect():Then(thenable(a), thenable(b));
+		assert.spy(a).was.called(1);
+		assert.spy(a).was.called_with(db);
+		assert.spy(b).was_not.called();
+	end)
 end)

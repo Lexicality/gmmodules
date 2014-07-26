@@ -690,9 +690,11 @@ end
 
 -- Expose our privates for dr test
 if (_TEST) then
-    _registeredDatabaseMethods = registeredDatabaseMethods
-    _Database = Database
-    _PreparedQuery = PreparedQuery
-    _new = new
-    _bind = bind
+    _registeredDatabaseMethods = registeredDatabaseMethods;
+    _Database = Database;
+    _PreparedQuery = PreparedQuery;
+    _new = new;
+    _bind = bind;
+    _bindCArgs = bindCArgs;
+    _checkModule = checkmodule;
 end

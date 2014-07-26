@@ -30,6 +30,32 @@ local invalidDB = {
 	["CanSelect"] = function() return false; end;
 }
 
+describe("FindFirstAvailableDBMethod", function()
+	-- These test assumes that all the default methods will be
+	--  unavailable to start off with. This is a ~farily~ reasonable
+	--  assumption, given they're glua specific.
+	it("Should return false if nothing is available", function()
+		assert.is_false(database.FindFirstAvailableDBMethod());
+	end)
+	it("Should return SQLite if you ask for it", function()
+		assert.is.equal(database.FindFirstAvailableDBMethod(true), 'sqlite');
+	end)
+	it("Should return the mock db method when available", function()
+		database.RegisterDBMethod("Mock", mockDB)
+		assert.is.equal(database.FindFirstAvailableDBMethod(), 'mock');
+		database.RegisterDBMethod("Mock", invalidDB)
+		assert.is_false(database.FindFirstAvailableDBMethod());
+	end)
+	it("Should check the validity of db methods", function()
+		database.RegisterDBMethod("Mock", mockDB)
+		spy.on(mockDB, "CanSelect");
+		assert.is_true(database.IsValidDBMethod("Mock"))
+		assert.is.equal(database.FindFirstAvailableDBMethod(), 'mock');
+		assert.spy(mockDB.CanSelect).was.called()
+		mockDB.CanSelect:revert()
+		database.RegisterDBMethod("Mock", invalidDB)
+	end)
+end)
 
 describe("GetNewDBMethod", function()
 	setup(function()
@@ -98,12 +124,12 @@ describe("RegisterDBMethod", function()
 			database.RegisterDBMethod("arg_test", emptyDB);
 		end);
 		assert.is_true(database.IsValidDBMethod("arg_test"))
-		assert.is_equal(database.GetDBMethod("arg_test"), emptyDB)
+		assert.is.equal(database.GetDBMethod("arg_test"), emptyDB)
 	end)
 	it("should overwite methods", function()
 		database.RegisterDBMethod("overwrite_test", mockDB)
 		database.RegisterDBMethod("overwrite_test", emptyDB)
-		assert.is_equal(database.GetDBMethod("overwrite_test"), emptyDB)
+		assert.is.equal(database.GetDBMethod("overwrite_test"), emptyDB)
 	end)
 end)
 

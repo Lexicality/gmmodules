@@ -1,0 +1,7 @@
+return {
+	default = {
+		ROOT = "tests";
+		root = "tests";
+		lpath = "./?.lua";
+	}
+}

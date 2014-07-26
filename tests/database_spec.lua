@@ -2,35 +2,41 @@ require "database";
 
 local Deferred = require 'promises';
 
-local mockDB = {};
+local mockDB = {
+	["Connect"] = function()
+		return Deferred():Resolve(self):Promise();
+	end;
+	["Disconnect"] = function() end;
+	["IsConnected"] = function()
+		return true;
+	end;
+	["Escape"] = function(text)
+		return text;
+	end;
+	["Query"] = function()
+		return Deferred():Reject("This method should be overriden!"):Promise();
+	end;
+	["CanSelect"] = function()
+		return true;
+	end;
+}
 
-function mockDB:Connect(tab)
-	return Deferred():Resolve(self):Promise();
-end
-
-function mockDB:Disconnect()
-end
-
-function mockDB:Query(text)
-	return Deferred():Reject("This method should be overriden!"):Promise();
-end
-
-function mockDB:Escape(text)
-	return text;
-end
-
-function mockDB:IsConnected()
-	return true;
-end
-
-function mockDB.CanSelect()
-	return true;
-end
+local invalidDB = {
+	["Connect"] = function() end;
+	["Disconnect"] = function() end;
+	["IsConnected"] = function() end;
+	["Escape"] = function() end;
+	["Query"] = function() end;
+	["CanSelect"] = function() return false; end;
+}
 
 
 describe("GetNewDBMethod", function()
 	setup(function()
 		database.RegisterDBMethod("Mock", mockDB)
+	end)
+	teardown(function()
+		database.RegisterDBMethod("Mock", invalidDB)
 	end)
 
 	it("should be picky about its arguments", function()
@@ -64,6 +70,10 @@ describe("RegisterDBMethod", function()
 		["Query"] = function() end;
 		["CanSelect"] = function() return true; end;
 	}
+	teardown(function()
+		database.RegisterDBMethod("arg_test", invalidDB)
+		database.RegisterDBMethod("overwrite_test", invalidDB)
+	end)
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.RegisterDBMethod(); end)
 		assert.has.errors(function() database.RegisterDBMethod({}); end)
@@ -101,6 +111,9 @@ describe("IsValidDBMethod", function()
 	setup(function()
 		database.RegisterDBMethod("Mock", mockDB)
 	end)
+	teardown(function()
+		database.RegisterDBMethod("Mock", invalidDB)
+	end)
 	it("should return true for valid methods", function()
 		assert.is_true(database.IsValidDBMethod("Mock"));
 	end)
@@ -124,6 +137,9 @@ end)
 describe("GetDBMethod", function()
 	setup(function()
 		database.RegisterDBMethod("Mock", mockDB)
+	end)
+	teardown(function()
+		database.RegisterDBMethod("Mock", invalidDB)
 	end)
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.GetNewMethod(); end)

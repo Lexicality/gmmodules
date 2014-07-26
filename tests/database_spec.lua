@@ -1,3 +1,6 @@
+-- Given that busted doesn't do this (despite saying it does)
+_G._TEST = true;
+
 require "database";
 
 local Deferred = require 'promises';
@@ -169,12 +172,13 @@ describe("RegisterDBMethod", function()
 			database.RegisterDBMethod("arg_test", emptyDB);
 		end);
 		assert.is_true(database.IsValidDBMethod("arg_test"))
-		assert.is.equal(database.GetDBMethod("arg_test"), emptyDB)
+		assert.is.equal(database._registeredDatabaseMethods["arg_test"], emptyDB)
 	end)
 	it("should overwite methods", function()
 		database.RegisterDBMethod("overwrite_test", mockDB)
 		database.RegisterDBMethod("overwrite_test", emptyDB)
-		assert.is.equal(database.GetDBMethod("overwrite_test"), emptyDB)
+		assert.is_not.equal(database._registeredDatabaseMethods["overwrite_test"], mockDB)
+		assert.is.equal(database._registeredDatabaseMethods["overwrite_test"], emptyDB)
 	end)
 end)
 

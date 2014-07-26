@@ -30,6 +30,15 @@ local invalidDB = {
 	["CanSelect"] = function() return false; end;
 }
 
+local emptyDB = {
+	["Connect"] = function() end;
+	["Disconnect"] = function() end;
+	["IsConnected"] = function() end;
+	["Escape"] = function() end;
+	["Query"] = function() end;
+	["CanSelect"] = function() return true; end;
+}
+
 -- "Simple" tests
 describe("NewDatabase", function()
 	it("should be picky about its arguments", function()
@@ -123,14 +132,6 @@ describe("GetNewDBMethod", function()
 end)
 
 describe("RegisterDBMethod", function()
-	local emptyDB = {
-		["Connect"] = function() end;
-		["Disconnect"] = function() end;
-		["IsConnected"] = function() end;
-		["Escape"] = function() end;
-		["Query"] = function() end;
-		["CanSelect"] = function() return true; end;
-	}
 	teardown(function()
 		database.RegisterDBMethod("arg_test", invalidDB)
 		database.RegisterDBMethod("overwrite_test", invalidDB)

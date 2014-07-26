@@ -30,6 +30,41 @@ local invalidDB = {
 	["CanSelect"] = function() return false; end;
 }
 
+-- "Simple" tests
+describe("NewDatabase", function()
+	it("should be picky about its arguments", function()
+		assert.has.errors(function() database.NewDatabase(); end)
+		assert.has.errors(function() database.NewDatabase(false); end)
+		function checkErrors(...)
+			local tab = {}
+			for _, name in pairs{...} do
+				tab[name] = ""
+			end
+			assert.has.errors(function() database.NewDatabase(tab); end)
+		end
+		checkErrors("Hostname")
+		checkErrors("Hostname", "Username")
+		checkErrors("Hostname", "Username", "Password")
+		checkErrors("Hostname", "Username", "Database")
+		assert.has.errors(function() database.NewDatabase({
+			Username = "";
+			Hostname = "";
+			Password = "";
+			Database = "";
+			Port = "Hi!";
+		}) end);
+	end)
+	it("Should return an objet", function()
+		assert.is_truthy(database.NewDatabase({
+			Username = "";
+			Hostname = "";
+			Password = "";
+			Database = "";
+		}))
+	end);
+end)
+
+
 describe("FindFirstAvailableDBMethod", function()
 	-- These test assumes that all the default methods will be
 	--  unavailable to start off with. This is a ~farily~ reasonable

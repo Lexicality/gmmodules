@@ -32,6 +32,9 @@ local sqlite   = sql;
 local mysqloo  = mysqloo;
 local tmysql   = tmysql;
 
+-- Testing
+local _TEST = _TEST;
+
 ---
 -- The Universal Database Module is an attempt to provide a single rational interface
 --  that allows Developers to run SQL commands without caring which MySQL module the server has installed.
@@ -683,4 +686,13 @@ do -- SQLite
     end
 
     RegisterDBMethod( "SQLite", db );
+end
+
+-- Expose our privates for dr test
+if (_TEST) then
+    _registeredDatabaseMethods = registeredDatabaseMethods
+    _Database = Database
+    _PreparedQuery = PreparedQuery
+    _new = new
+    _bind = bind
 end

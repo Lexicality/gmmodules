@@ -26,6 +26,12 @@ local error, type, unpack, pairs, ipairs, tonumber, setmetatable, require, strin
 local file, system, SERVER, ErrorNoHalt =
       file, system, SERVER, ErrorNoHalt;
 
+if (not ErrorNoHalt) then
+    ErrorNoHalt = function(...)
+        print("[ERROR]", ...);
+    end
+end
+
 local Deferred = require 'promises';
 -- Databases
 local sqlite   = sql;
@@ -435,6 +441,8 @@ function GetDBMethod( name )
 end
 
 local function checkmodule( name )
+    -- Not in Garry's Mod
+    if (not system) then return false; end
     local prefix = ( SERVER ) and "gmsv" or "gmcl";
     local suffix;
     if ( system.IsWindows() ) then
@@ -444,7 +452,8 @@ local function checkmodule( name )
     elseif ( system.IsOSX() ) then
         suffix = "osx";
     else
-        error( "The fuck kind of a system are you running me on?!" );
+        ErrorNoHalt("Unknown system!");
+        return false;
     end
     if ( file.Exists( "lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll", "GAME" ) ) then
         return require( "lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll" );

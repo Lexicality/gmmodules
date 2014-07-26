@@ -73,7 +73,7 @@ describe("NewDatabase", function()
 		}) end);
 	end)
 	it("Should return an objet", function()
-		assert.is_truthy(database.NewDatabase({
+		assert.is_table(database.NewDatabase({
 			Username = "";
 			Hostname = "";
 			Password = "";
@@ -125,7 +125,7 @@ describe("GetNewDBMethod", function()
 		assert.is_false(database.GetNewDBMethod("doesn't exist"))
 	end)
 	it("should return an object for valid methods", function()
-		assert.is_truthy(database.GetNewDBMethod("Mock"))
+		assert.is_table(database.GetNewDBMethod("Mock"))
 	end)
 	it("should check if the method is valid", function()
 		spy.on(database, "IsValidDBMethod")
@@ -219,7 +219,7 @@ describe("GetDBMethod", function()
 		assert.is_nil(database.GetDBMethod("doesn't exist"))
 	end)
 	it("should return an object for valid methods", function()
-		assert.is_truthy(database.GetDBMethod("Mock"))
+		assert.is_table(database.GetDBMethod("Mock"))
 	end)
 	it("should return the method that was registered", function()
 		assert.is.equal(database.GetDBMethod("Mock"), mockDB);

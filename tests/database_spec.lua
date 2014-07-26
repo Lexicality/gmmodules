@@ -89,6 +89,12 @@ describe("RegisterDBMethod", function()
 			database.RegisterDBMethod("arg_test", emptyDB);
 		end);
 		assert.is_true(database.IsValidDBMethod("arg_test"))
+		assert.is_equal(database.GetDBMethod("arg_test"), emptyDB)
+	end)
+	it("should overwite methods", function()
+		database.RegisterDBMethod("overwrite_test", mockDB)
+		database.RegisterDBMethod("overwrite_test", emptyDB)
+		assert.is_equal(database.GetDBMethod("overwrite_test"), emptyDB)
 	end)
 end)
 

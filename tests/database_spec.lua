@@ -39,6 +39,15 @@ local emptyDB = {
 	["CanSelect"] = function() return true; end;
 }
 
+-- safety
+local function copy( tab )
+	local new = {};
+	for k, v in pairs(tab) do
+		new[k] = v;
+	end
+	return new;
+end
+
 -- "Simple" tests
 describe("NewDatabase", function()
 	it("should be picky about its arguments", function()
@@ -214,5 +223,60 @@ describe("GetDBMethod", function()
 	end)
 	it("should return the method that was registered", function()
 		assert.is.equal(database.GetDBMethod("Mock"), mockDB);
+	end)
+end)
+
+-- Somewhat more involved tests
+describe("Database:Connect", function()
+	local db, mockObj, cparams;
+	before_each(function()
+		mockObj = mock(copy(mockDB));
+		database.RegisterDBMethod("Mock", mockObj);
+		cparams = {
+			Username = "";
+			Hostname = "";
+			Password = "";
+			Database = "";
+		};
+		db = database.NewDatabase(cparams);
+	end)
+	after_each(function()
+		cparams = nil;
+		db = nil;
+		mockObj = nil;
+		database.RegisterDBMethod("Mock", invalidDB);
+	end)
+
+	it("Should default to the only available method", function()
+		db:Connect()
+		assert.spy(mockObj.CanSelect).was.called();
+		assert.spy(mockObj.Connect).was.called(1);
+		assert.spy(mockObj.Connect).was.called_with(mockObj, cparams, db);
+	end)
+
+	it("Should use the requested method", function()
+		-- Setup
+		local mockObj1 = mock(copy(mockDB));
+		local mockObj2 = mock(copy(mockDB));
+		local mockObj3 = mock(copy(mockDB));
+		database.RegisterDBMethod("Mock 1", mockObj1);
+		database.RegisterDBMethod("Mock 2", mockObj2);
+		database.RegisterDBMethod("Mock 3", mockObj3);
+
+		cparams["DBMethod"] = "Mock 2";
+		db = database.NewDatabase(cparams);
+
+		-- Test
+		db:Connect()
+		assert.spy(mockObj.Connect).was_not.called();
+		assert.spy(mockObj1.Connect).was_not.called();
+		assert.spy(mockObj3.Connect).was_not.called();
+		assert.spy(mockObj2.Connect).was.called(1);
+		assert.spy(mockObj2.Connect).was.called_with(mockObj2, cparams, db);
+
+		-- Teardown
+		database.RegisterDBMethod("Mock 1", invalidDB);
+		database.RegisterDBMethod("Mock 2", invalidDB);
+		database.RegisterDBMethod("Mock 3", invalidDB);
 	end)
 end)

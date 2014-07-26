@@ -40,6 +40,12 @@ describe("GetNewDBMethod", function()
 	it("should return an object for valid methods", function()
 		assert.is_truthy(database.GetNewDBMethod("Mock"))
 	end)
+	it("should check if the method is valid", function()
+		spy.on(database, "IsValidDBMethod")
+		database.GetNewDBMethod("Mock");
+		assert.spy(database.IsValidDBMethod).was.called()
+		database.IsValidDBMethod:revert()
+	end)
 	it("should return an instance of a valid method", function()
 		local method = database.GetNewDBMethod("Mock");
 		assert.is_not_false(method);
@@ -94,6 +100,12 @@ describe("IsValidDBMethod", function()
 		assert.is_true(database.IsValidDBMethod("mock"))
 		assert.is_true(database.IsValidDBMethod("MOCK"))
 		assert.is_true(database.IsValidDBMethod("MoCk"))
+	end)
+	it("should ask the method", function()
+		spy.on(mockDB, "CanSelect");
+		assert.is_true(database.IsValidDBMethod("Mock"))
+		assert.spy(mockDB.CanSelect).was.called()
+		mockDB.CanSelect:revert()
 	end)
 end)
 

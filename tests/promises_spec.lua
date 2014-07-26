@@ -1,5 +1,3 @@
-require "busted";
-
 local Deferred = require 'promises';
 
 -- for k,v in pairs(Deferred) do print(k,v); end

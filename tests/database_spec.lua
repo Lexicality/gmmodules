@@ -1,4 +1,3 @@
-require "busted";
 require "database";
 
 local Deferred = require 'promises';

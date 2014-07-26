@@ -196,3 +196,73 @@ describe("[Promises/A] Chaining off of a rejected promise", function ()
         end);
     end);
 end);
+
+describe("[Promises/A] Multiple handlers", function ()
+    describe("when there are multiple fulfillment handlers for a fulfilled promise", function ()
+        it("should call them all, in order, with the same fulfillment value", function ()
+            local promise = fulfilled(sentinel);
+
+            -- Don't let their return value *or* thrown exceptions impact each other.
+            local handler1 = spy.new(function() return other; end);
+            local handler2 = spy.new(function() error("Whoops"); end);
+            local handler3 = spy.new(function() return other; end);
+
+            local rejection = spy.new(function() end);
+            promise:Then(handler1, rejection);
+            promise:Then(handler2, rejection);
+            promise:Then(handler3, rejection);
+
+            promise:Then(function (value)
+                assert.are.equal(value, sentinel);
+
+                assert.spy(handler1).was.called_with(sentinel);
+                assert.spy(handler2).was.called_with(sentinel);
+                assert.spy(handler3).was.called_with(sentinel);
+                assert.spy(rejection).was_not.called();
+            end);
+        end);
+
+        it("should generate multiple branching chains with their own fulfillment values", function ()
+            local promise = fulfilled(other);
+
+            local sentinel2 = {};
+
+            promise:Then(function ()
+                return sentinel;
+            end):Then(function (value)
+                assert.are.equal(value, sentinel);
+            end);
+
+            promise:Then(function ()
+                return sentinel2;
+            end):Then(function (value)
+                assert.are.equal(value, sentinel2);
+            end);
+        end);
+    end);
+
+    describe("when there are multiple rejection handlers for a rejected promise", function ()
+        it("should call them all, in order, with the same rejection reason", function (done)
+            local promise = rejected(sentinel);
+
+            -- Don't let their return value *or* thrown exceptions impact each other.
+            local fulfillment = spy.new(function() end);
+            local handler1 = spy.new(function() return other; end);
+            local handler2 = spy.new(function() error("Whoops"); end);
+            local handler3 = spy.new(function() return other; end);
+
+            promise:Then(fulfillment, handler1);
+            promise:Then(fulfillment, handler2);
+            promise:Then(fulfillment, handler3);
+
+            promise:Then(null, function (value)
+                assert.are.equal(value, sentinel);
+
+                assert.spy(handler1).was.called_with(sentinel);
+                assert.spy(handler2).was.called_with(sentinel);
+                assert.spy(handler3).was.called_with(sentinel);
+                assert.spy(rejection).was_not.called();
+            end);
+        end);
+    end);
+end);

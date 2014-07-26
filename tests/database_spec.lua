@@ -30,6 +30,23 @@ end
 
 database.RegisterDBMethod("Mock", mockDB)
 
+describe("GetNewDBMethod", function()
+	it("should be picky about its arguments", function()
+		assert.has.errors(function() database.GetNewDBMethod(); end)
+	end)
+	it("should return false for invalid methods", function()
+		assert.is_false(database.GetNewDBMethod("doesn't exist"))
+	end)
+	it("should return an object for valid methods", function()
+		assert.is_truthy(database.GetNewDBMethod("Mock"))
+	end)
+	it("should return an instance of a valid method", function()
+		local method = database.GetNewDBMethod("Mock");
+		assert.is_not_false(method);
+		assert.is.equal(method.Connect, mockDB.Connect);
+	end)
+end)
+
 describe("RegisterDBMethod", function()
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.RegisterDBMethod(); end)
@@ -77,5 +94,20 @@ describe("IsValidDBMethod", function()
 		assert.is_true(database.IsValidDBMethod("mock"))
 		assert.is_true(database.IsValidDBMethod("MOCK"))
 		assert.is_true(database.IsValidDBMethod("MoCk"))
+	end)
+end)
+
+describe("GetDBMethod", function()
+	it("should be picky about its arguments", function()
+		assert.has.errors(function() database.GetNewMethod(); end)
+	end)
+	it("should return nil for invalid methods", function()
+		assert.is_nil(database.GetDBMethod("doesn't exist"))
+	end)
+	it("should return an object for valid methods", function()
+		assert.is_truthy(database.GetDBMethod("Mock"))
+	end)
+	it("should return the method that was registered", function()
+		assert.is.equal(database.GetDBMethod("Mock"), mockDB);
 	end)
 end)

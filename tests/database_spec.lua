@@ -255,6 +255,13 @@ describe("Database:Connect", function()
 	end)
 
 	it("Should use the requested method", function()
+		-- Teardown
+		finally(function()
+			database.RegisterDBMethod("Mock 1", invalidDB);
+			database.RegisterDBMethod("Mock 2", invalidDB);
+			database.RegisterDBMethod("Mock 3", invalidDB);
+		end);
+
 		-- Setup
 		local mockObj1 = mock(copy(mockDB));
 		local mockObj2 = mock(copy(mockDB));
@@ -273,11 +280,6 @@ describe("Database:Connect", function()
 		assert.spy(mockObj3.Connect).was_not.called();
 		assert.spy(mockObj2.Connect).was.called(1);
 		assert.spy(mockObj2.Connect).was.called_with(mockObj2, cparams, db);
-
-		-- Teardown
-		database.RegisterDBMethod("Mock 1", invalidDB);
-		database.RegisterDBMethod("Mock 2", invalidDB);
-		database.RegisterDBMethod("Mock 3", invalidDB);
 	end)
 
 	-- Stubs are tables and tables can't go into then

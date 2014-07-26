@@ -266,3 +266,47 @@ describe("[Promises/A] Multiple handlers", function ()
         end);
     end);
 end);
+
+describe("[Extension] Returning a promise from a fulfilled promise's fulfillment callback", function ()
+    describe("when the returned promise is fulfilled", function ()
+        it("should call the second fulfillment callback with the value", function ()
+            fulfilled(other):Then(function ()
+                return fulfilled(sentinel);
+            end):Then(function (value)
+                assert.strictEqual(value, sentinel);
+            end);
+        end);
+    end);
+
+    describe("when the returned promise is rejected", function ()
+        it("should call the second rejection callback with the reason", function ()
+            fulfilled(other):Then(function ()
+                return rejected(sentinel);
+            end):Then(null, function (reason)
+                assert.strictEqual(reason, sentinel);
+            end);
+        end);
+    end);
+end);
+
+describe("[Extension] Returning a promise from a rejected promise's rejection callback", function ()
+    describe("when the returned promise is fulfilled", function ()
+        it("should call the second fulfillment callback with the value", function ()
+            rejected(other):Then(null, function ()
+                return fulfilled(sentinel);
+            end):Then(function (value)
+                assert.strictEqual(value, sentinel);
+            end);
+        end);
+    end);
+
+    describe("when the returned promise is rejected", function ()
+        it("should call the second rejection callback with the reason", function ()
+            rejected(other):Then(null, function ()
+                return rejected(sentinel);
+            end):Then(null, function (reason)
+                assert.strictEqual(reason, sentinel);
+            end);
+        end);
+    end);
+end);

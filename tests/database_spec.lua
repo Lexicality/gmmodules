@@ -1,3 +1,5 @@
+-- Avoid spam
+_G.ErrorNoHalt = function() end
 -- Given that busted doesn't do this (despite saying it does)
 _G._TEST = true;
 
@@ -298,4 +300,41 @@ describe("Database:Connect", function()
 		assert.spy(a).was.called_with(db);
 		assert.spy(b).was_not.called();
 	end)
+end)
+
+describe("Database:Query", function()
+	local db, mockObj, cparams;
+	before_each(function()
+		mockObj = mock(copy(mockDB));
+		database.RegisterDBMethod("Mock", mockObj);
+		cparams = {
+			Username = "";
+			Hostname = "";
+			Password = "";
+			Database = "";
+		};
+		db = database.NewDatabase(cparams);
+	end)
+	after_each(function()
+		cparams = nil;
+		db = nil;
+		mockObj = nil;
+		database.RegisterDBMethod("Mock", invalidDB);
+	end)
+	it("Should throw an error if the database isn't connected", function()
+		assert.has.error(function() db:Query("foo") end);
+		db:Connect();
+		assert.has_no.errors(function() db:Query("foo") end);
+	end);
+	it("Should call the underlying method with no changes", function()
+		db:Connect();
+		local query = "foo";
+		db:Query(query);
+		assert.spy(mockObj.Escape).was_not.called();
+		assert.spy(mockObj.Query).was.called(1)
+		assert.spy(mockObj.Query).was.called_with(mockObj, query);
+	end)
+	-- it("Should return a promise", function()
+	-- 	pending("TODO")
+	-- end)
 end)

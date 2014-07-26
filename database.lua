@@ -97,6 +97,9 @@ end
 --
 
 setmetatable( Database, { __index = function( self, key )
+    if ( key == '_db' ) then
+        return nil;
+    end
     -- Forward all the generic db methods down the line
     if ( self._db and self._db[ key ] ) then
         if ( string.sub( key, 1,1 ) == '_'

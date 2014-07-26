@@ -28,9 +28,12 @@ function mockDB.CanSelect()
 	return true;
 end
 
-database.RegisterDBMethod("Mock", mockDB)
 
 describe("GetNewDBMethod", function()
+	setup(function()
+		database.RegisterDBMethod("Mock", mockDB)
+	end)
+
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.GetNewDBMethod(); end)
 	end)
@@ -54,6 +57,14 @@ describe("GetNewDBMethod", function()
 end)
 
 describe("RegisterDBMethod", function()
+	local emptyDB = {
+		["Connect"] = function() end;
+		["Disconnect"] = function() end;
+		["IsConnected"] = function() end;
+		["Escape"] = function() end;
+		["Query"] = function() end;
+		["CanSelect"] = function() return true; end;
+	}
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.RegisterDBMethod(); end)
 		assert.has.errors(function() database.RegisterDBMethod({}); end)
@@ -75,20 +86,16 @@ describe("RegisterDBMethod", function()
 	end)
 	it("should create methods", function()
 		assert.has_no.errors(function()
-			database.RegisterDBMethod("arg_test", {
-				["Connect"] = function() end;
-				["Disconnect"] = function() end;
-				["IsConnected"] = function() end;
-				["Escape"] = function() end;
-				["Query"] = function() end;
-				["CanSelect"] = function() return true; end;
-			});
+			database.RegisterDBMethod("arg_test", emptyDB);
 		end);
 		assert.is_true(database.IsValidDBMethod("arg_test"))
 	end)
 end)
 
 describe("IsValidDBMethod", function()
+	setup(function()
+		database.RegisterDBMethod("Mock", mockDB)
+	end)
 	it("should return true for valid methods", function()
 		assert.is_true(database.IsValidDBMethod("Mock"));
 	end)
@@ -110,6 +117,9 @@ describe("IsValidDBMethod", function()
 end)
 
 describe("GetDBMethod", function()
+	setup(function()
+		database.RegisterDBMethod("Mock", mockDB)
+	end)
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.GetNewMethod(); end)
 	end)

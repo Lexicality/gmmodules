@@ -1,4 +1,7 @@
-GMod Modules
-============
+Lex's GMod Modules
+==================
 
-I just needed a handy method of keepin my modules in synch. Nothing to see here, move along, move along.
+[![Build Status](https://travis-ci.org/Lexicality/gmmodules.svg?branch=databasin)](https://travis-ci.org/Lexicality/gmmodules)
+
+This is how I keep my module code in sync.
+You probably don't want to get anything from here, check out the link in the header.

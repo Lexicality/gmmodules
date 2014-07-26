@@ -53,6 +53,11 @@ local function copy( tab )
 	return new;
 end
 
+-- Stubs are tables and tables can't go into then
+local function thenable(a)
+	return function(...) return a(...) end
+end
+
 -- "Simple" tests
 describe("NewDatabase", function()
 	it("should be picky about its arguments", function()
@@ -288,11 +293,6 @@ describe("Database:Connect", function()
 		assert.spy(mockObj2.Connect).was.called_with(mockObj2, cparams, db);
 	end)
 
-	-- Stubs are tables and tables can't go into then
-	local function thenable(a)
-		return function(...) return a(...) end
-	end
-
 	it("Should return itself on successful connect", function()
 		local a, b = stub.new(), stub.new();
 		db:Connect():Then(thenable(a), thenable(b));
@@ -334,7 +334,17 @@ describe("Database:Query", function()
 		assert.spy(mockObj.Query).was.called(1)
 		assert.spy(mockObj.Query).was.called_with(mockObj, query);
 	end)
-	-- it("Should return a promise", function()
-	-- 	pending("TODO")
-	-- end)
+	it("Should return a promise", function()
+		local resp = "It worked!";
+		mockObj.Query = spy.new(function()
+			return Deferred():Resolve(resp):Promise();
+		end)
+		local query = "foo";
+		db:Connect();
+		local a, b = stub.new(), stub.new();
+		db:Query(query):Then(thenable(a), thenable(b));
+		assert.spy(a).was.called(1);
+		assert.spy(a).was.called_with(resp);
+		assert.spy(b).was_not.called();
+	end)
 end)

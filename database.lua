@@ -96,22 +96,6 @@ end
 -- DBOBJ
 --
 
-setmetatable( Database, { __index = function( self, key )
-    if ( key == '_db' ) then
-        return nil;
-    end
-    -- Forward all the generic db methods down the line
-    if ( self._db and self._db[ key ] ) then
-        if ( string.sub( key, 1,1 ) == '_'
-         or type( self._db ) ~= "function" ) then
-            return nil;
-        end
-        return function( self, ... )
-            return self._db[ key ]( self._db, ... );
-        end
-    end
-end} );
-
 --
 -- CTor. Accepts the variables passed to NewDatabase
 -- @see NewDatabase
@@ -196,7 +180,11 @@ end
 -- Nukes the database connection with an undefined effect on any queries currently running. It's generally advisable not to call this
 -- @name Database:Disconnect
 -- @class function
-Database.Disconnect = nil;
+function Database:Disconnect()
+    if (self._db) then
+        self._db:Disconnect();
+    end
+end
 
 ---
 -- Sanitise a string for insertion into the database
@@ -204,7 +192,12 @@ Database.Disconnect = nil;
 -- @class function
 -- @param text The string to santise
 -- @return A ensafened string
-Database.Escape = nil;
+function Database:Escape(text)
+    if (not self._db) then
+        error("Cannot escape without an active DB. (Have you called Connect()?)")
+    end
+    return self._db:Escape(text);
+end
 
 ---
 -- Checks to seee if Connect as been called and Disconnect hasn't

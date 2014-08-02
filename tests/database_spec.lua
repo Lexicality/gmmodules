@@ -375,3 +375,28 @@ describe("Database:Query", function()
 		assert.spy(b).was_not.called();
 	end)
 end)
+
+describe("Database:Escape", function()
+	local db, mockObj, cparams;
+	before_each(function()
+		mockObj = mock(copy(mockDB));
+		database.RegisterDBMethod("Mock", mockObj);
+		cparams = {
+			Username = "";
+			Hostname = "";
+			Password = "";
+			Database = "";
+		};
+		db = database.NewDatabase(cparams);
+	end)
+	after_each(function()
+		cparams = nil;
+		db = nil;
+		mockObj = nil;
+		database.RegisterDBMethod("Mock", invalidDB);
+	end)
+
+	pending("causes an error on a non-connected database")
+	pending("passes arguments verbatum to the db method")
+	pending("returns the db method's responses")
+end)

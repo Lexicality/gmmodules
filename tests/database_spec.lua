@@ -58,6 +58,33 @@ local function thenable(a)
 	return function(...) return a(...) end
 end
 
+-- Tests of internal functions
+describe("_new", function()
+	pending("should not return the actual table passed");
+	pending("should return an instance of the passed table");
+	pending("should call the Init function if available");
+end)
+
+describe("_bind", function()
+	pending("should do nothing if passed nothing");
+	pending("should do nothing if not passed a self");
+	pending("should return a function that always gets called with self");
+end)
+
+describe("_bindCArgs", function()
+	pending("should do nothing if not pased cargs");
+	pending("should return a function that unpacks the passed arugments into it as the second arguments")
+end)
+
+describe("_checkmodule", function()
+	pending("should not do anything outside of Garry's Mod")
+	-- This needs heavy mocking to work
+	pending("should request a module suffixed for the system it's on")
+	pending("should request a module prefixed for the state it is in")
+	pending("should check if the requested module is available first")
+	pending("should require the module if it is available")
+end)
+
 -- "Simple" tests
 describe("NewDatabase", function()
 	it("should be picky about its arguments", function()

@@ -210,7 +210,7 @@ Database.Escape = nil;
 -- Checks to seee if Connect as been called and Disconnect hasn't
 -- @return boolean
 function Database:IsConnected()
-    return self._db and self._db:IsConnected();
+    return self._db and self._db:IsConnected() or false;
 end
 
 --

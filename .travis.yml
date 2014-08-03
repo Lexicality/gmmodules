@@ -1,9 +1,8 @@
 language: erlang
 
 env:
-  - LUA="luajit"
-  - TESTS="database"
-  - TESTS="promises"
+  - LUA="luajit" TESTS="database"
+  - LUA="luajit" TESTS="promises"
 
 install:
   - sudo apt-get update

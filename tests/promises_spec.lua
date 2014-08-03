@@ -1,3 +1,7 @@
+-- Avoid spam
+_G.ErrorNoHalt = function() end
+-- Given that busted doesn't do this (despite saying it does)
+_G._TEST = true;
 local Deferred = require 'promises';
 
 -- for k,v in pairs(Deferred) do print(k,v); end

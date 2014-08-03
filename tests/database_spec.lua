@@ -400,3 +400,27 @@ describe("Database:Escape", function()
 	pending("passes arguments verbatum to the db method")
 	pending("returns the db method's responses")
 end)
+
+describe("Database:Disconnect", function()
+	local db, mockObj, cparams;
+	before_each(function()
+		mockObj = mock(copy(mockDB));
+		database.RegisterDBMethod("Mock", mockObj);
+		cparams = {
+			Username = "";
+			Hostname = "";
+			Password = "";
+			Database = "";
+		};
+		db = database.NewDatabase(cparams);
+	end)
+	after_each(function()
+		cparams = nil;
+		db = nil;
+		mockObj = nil;
+		database.RegisterDBMethod("Mock", invalidDB);
+	end)
+
+	pending("does nothing on a non-connected database")
+	pending("calls the db method")
+end)

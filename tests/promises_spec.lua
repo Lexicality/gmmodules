@@ -379,7 +379,7 @@ describe("Promise:Always", function()
         local p = pending().promise();
         assert.are.equal(p, p:Always(function() end));
     end)
-    it("is called as if it was added with :Then", function()
+    it("is called as if it was added with :Then (fulfill)", function()
         local pending = pending();
         local promise = pending.promise();
         local one = spy.new(function()end);
@@ -387,6 +387,20 @@ describe("Promise:Always", function()
         promise:Always(one);
         assert.spy(one).was_not.called();
         pending.fulfill(sentinel);
+        assert.spy(one).was.called(1);
+        assert.spy(one).was.called_with(sentinel);
+        promise:Always(two);
+        assert.spy(two).was.called(1);
+        assert.spy(two).was.called_with(sentinel);
+    end)
+    it("is called as if it was added with :Then (reject)", function()
+        local pending = pending();
+        local promise = pending.promise();
+        local one = spy.new(function()end);
+        local two = spy.new(function()end);
+        promise:Always(one);
+        assert.spy(one).was_not.called();
+        pending.reject(sentinel);
         assert.spy(one).was.called(1);
         assert.spy(one).was.called_with(sentinel);
         promise:Always(two);

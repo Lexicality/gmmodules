@@ -25,6 +25,7 @@ function pending()
         promise = function() return d:Promise(); end;
         fulfill = function(value) return d:Resolve(value); end;
         reject = function(reason) return d:Reject(reason); end;
+        notify = function(value) return d:Notify(value); end;
     };
 end
 
@@ -38,6 +39,11 @@ function callbackAggregator(times, ultimateCallback)
             ultimateCallback();
         end
     end
+end
+
+-- Stubs are tables and tables can't go into then
+local function thenable(a)
+    return function(...) return a(...) end
 end
 
 describe("[Promises/A] Basic characteristics of `then`", function ()
@@ -425,5 +431,112 @@ describe("Promise:Always", function()
         rejected(sentinel):Always(two);
         assert.spy(two).was.called(1);
         assert.spy(two).was.called_with(sentinel);
+    end)
+end)
+
+describe("Promise:Notify", function()
+    it("is acts like a resolve/reject", function()
+        local pending = pending();
+        local promise = pending.promise();
+        local one = spy.new(function() return other end);
+        local two = spy.new(function() end);
+        promise:Then(nil, nil, thenable(one)):Progress(two);
+        assert.spy(one).was_not.called();
+        assert.spy(two).was_not.called();
+
+        pending.notify(sentinel);
+
+        assert.spy(one).was.called(1);
+        assert.spy(one).was.called_with(sentinel);
+        assert.spy(two).was.called(1);
+        assert.spy(two).was.called_with(other);
+    end)
+    it("has no effect on the actual promise", function()
+        local pending = pending();
+        local promise = pending.promise();
+
+        local one = spy.new(function() end);
+        local two = spy.new(function() end);
+        local three = spy.new(function() return other end);
+
+        promise:Then(thenable(one), thenable(two), thenable(three));
+
+        pending.notify(other);
+        assert.spy(one).was_not.called();
+        assert.spy(two).was_not.called();
+        assert.spy(three).was.called(1);
+        assert.spy(three).was.called_with(other);
+
+        pending.fulfill(sentinel);
+        assert.spy(one).was.called(1);
+        assert.spy(one).was.called_with(sentinel);
+        assert.spy(two).was_not.called();
+        assert.spy(three).was.called(1);
+        assert.spy(three).was_not.called_with(sentinel);
+    end)
+    it("ignores errors", function()
+        local pending = pending();
+        local promise = pending.promise();
+        local one = spy.new(function() error("oh dear"); end);
+        local two = spy.new(function() error("oh dear"); end);
+        local three = spy.new(function() error("oh dear") end);
+
+        promise:Then(nil, nil, thenable(one)):Then(nil, nil, thenable(two)):Progress(thenable(three));
+
+        pending.notify(sentinel);
+
+        assert.spy(one).was.called(1);
+        assert.spy(one).was.called_with(sentinel);
+        assert.spy(two).was.called(1);
+        assert.spy(two).was.called_with(sentinel);
+        assert.spy(three).was.called(1);
+        assert.spy(three).was.called_with(sentinel);
+    end);
+    it("calls notify handlers for all notifications", function()
+        local pending = pending();
+        local promise = pending.promise();
+        local one = spy.new(function(...) return ...; end);
+        local two = spy.new(function(...) return ...; end);
+        local three = spy.new(function(...) return ...; end);
+        local four = spy.new(function(...) return ...; end);
+
+        promise:Then(nil, nil, thenable(one)):Progress(two);
+
+        pending.notify(sentinel);
+
+        assert.spy(one).was.called(1);
+        assert.spy(two).was.called(1);
+        assert.spy(one).was.called_with(sentinel);
+        assert.spy(two).was.called_with(sentinel);
+
+        promise:Then(nil, nil, thenable(three)):Progress(four);
+
+        assert.spy(three).was.called(1);
+        assert.spy(four).was.called(1);
+        assert.spy(three).was.called_with(sentinel);
+        assert.spy(four).was.called_with(sentinel);
+
+        pending.notify(other);
+
+
+        assert.spy(one).was.called(2);
+        assert.spy(two).was.called(2);
+        assert.spy(three).was.called(2);
+        assert.spy(four).was.called(2);
+        assert.spy(one).was.called_with(other);
+        assert.spy(two).was.called_with(other);
+        assert.spy(three).was.called_with(other);
+        assert.spy(four).was.called_with(other);
+
+    end)
+    it("throws an error if a fulfilled promise is notified", function()
+        local pending = pending();
+        pending.fulfill(sentinel);
+        assert.has.error(function() pending.notify(other) end);
+    end)
+    it("throws an error if a rejected promise is notified", function()
+        local pending = pending();
+        pending.reject(sentinel);
+        assert.has.error(function() pending.notify(other) end);
     end)
 end)

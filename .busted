@@ -3,5 +3,6 @@ return {
 		ROOT = "tests";
 		root = "tests";
 		lpath = "./?.lua";
+		coverage = true;
 	}
 }

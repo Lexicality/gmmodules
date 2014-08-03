@@ -24,8 +24,8 @@ function pending()
     };
 end
 
-local other = {}; -- a dummy value we don't want to be strict equal to
-local sentinel = {}; -- a sentinel fulfillment value to test for with strict equality
+local other = { a = 1 }; -- a dummy value we don't want to be strict equal to
+local sentinel = { b = 2 }; -- a sentinel fulfillment value to test for with strict equality
 function callbackAggregator(times, ultimateCallback)
     local soFar = 0;
     return function ()

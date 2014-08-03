@@ -10,4 +10,5 @@ install:
   - sudo luarocks install luafilesystem
   - sudo luarocks install busted
 
-script: "busted tests"
+script:
+  - busted -c tests

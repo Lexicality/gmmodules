@@ -14,3 +14,6 @@ install:
 
 script:
   - busted -c -p TESTS tests
+
+after_success:
+  - 'egrep "./$TESTS.lua" luacov_report.txt | sed -n ''s/.*\s\([0-9.]\+%\).*/Code Coverage: \1/p'''

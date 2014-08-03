@@ -2,6 +2,8 @@ language: erlang
 
 env:
   - LUA="luajit"
+  - TESTS="database"
+  - TESTS="promises"
 
 install:
   - sudo apt-get update
@@ -11,4 +13,4 @@ install:
   - sudo luarocks install busted
 
 script:
-  - busted -c tests
+  - busted -c -p TESTS tests

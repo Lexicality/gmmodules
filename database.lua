@@ -701,5 +701,5 @@ if (_TEST) then
     _new = new;
     _bind = bind;
     _bindCArgs = bindCArgs;
-    _checkModule = checkmodule;
+    _checkmodule = checkmodule;
 end

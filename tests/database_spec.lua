@@ -77,12 +77,16 @@ describe("_bindCArgs", function()
 end)
 
 describe("_checkmodule", function()
-	pending("should not do anything outside of Garry's Mod")
+	it("should not do anything outside of Garry's Mod", function()
+		assert.is_false( database._checkmodule('tmysql') );
+	end)
 	-- This needs heavy mocking to work
-	pending("should request a module suffixed for the system it's on")
-	pending("should request a module prefixed for the state it is in")
-	pending("should check if the requested module is available first")
-	pending("should require the module if it is available")
+	describe("in a faked environment", function()
+		pending("should request a module suffixed for the system it's on")
+		pending("should request a module prefixed for the state it is in")
+		pending("should check if the requested module is available first")
+		pending("should require the module if it is available")
+	end);
 end)
 
 -- "Simple" tests

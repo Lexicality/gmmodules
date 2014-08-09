@@ -385,11 +385,13 @@ describe("Database", function()
 	end)
 
 	describe(":Query", function()
-		it("Should throw an error if the database isn't connected", function()
+		it("Should throw an error if the database has never connected", function()
 			assert.has.error(function() db:Query("foo") end);
 			db:Connect();
 			assert.has_no.errors(function() db:Query("foo") end);
 		end);
+		-- TODO: Query Queue!
+		pending("should throw an error if the database disconnects")
 		it("Should call the underlying method with no changes", function()
 			db:Connect();
 			local query = "foo";
@@ -457,5 +459,92 @@ describe("Database", function()
 			local query = db:PrepareQuery("foo");
 			assert.is.table(query);
 		end)
+	end)
+end);
+
+describe("PreparedQuery", function()
+	local db, mockObj, cparams, queryFunc;
+	before_each(function()
+		mockObj = mock(copy(mockDB));
+		mockObj.Query = spy.new(function(...)
+			local def = Deferred();
+			queryFunc(def, ...);
+			return def:Promise();
+		end);
+		queryFunc = function(def)
+
+		end
+		database.RegisterDBMethod("Mock", mockObj);
+		cparams = {
+			Username = "";
+			Hostname = "";
+			Password = "";
+			Database = "";
+		};
+		db = database.NewDatabase(cparams);
+		db:Connect();
+	end)
+	after_each(function()
+		cparams = nil;
+		db = nil;
+		mockObj = nil;
+		database.RegisterDBMethod("Mock", invalidDB);
+	end)
+	describe(":SetCallbacks", function()
+		local done, fail, prog, query;
+		before_each(function()
+			query = db:PrepareQuery("foobar");
+			done, fail, prog = stub(), stub(), stub();
+			query:SetCallbacks(done, fail, prog);
+		end);
+		after_each(function()
+			done, fail, prog = nil, nil, nil;
+			query = nil;
+		end)
+
+		pending("calls the done callback on a successful query");
+		pending("calls the fail callback on a successful query");
+		pending("calls the prog callback on query progress");
+		pending("overwrites previous callbacks")
+		pending("doesn't require all three arguments")
+		pending("removes unspecified callbacks when overwriting")
+	end)
+	describe(":SetCallbackArgs", function()
+		local done, fail, prog, query;
+		local one, two, three = "one", "two", "three";
+		before_each(function()
+			query = db:PrepareQuery("foobar");
+			done, fail, prog = stub(), stub(), stub();
+			query:SetCallbacks(done, fail, prog);
+			queryFunc = function(def)
+				def:Resolve(one);
+			end
+		end);
+		after_each(function()
+			done, fail, prog = nil, nil, nil;
+			queryFunc = nil;
+			query = nil;
+		end)
+
+		pending("passes the arguments to all callbacks")
+		pending("only passes each set once per run")
+		pending("can be reset by passing nothing")
+	end)
+	describe(":Prepare", function()
+		pending("does nothing if the query has no placeholders")
+		pending("calls Database:Escape for each arg")
+		pending("errors if there are more placeholders than args")
+		pending("silently discards extra args")
+		pending("sprintfs arguments into the query")
+		pending("is only valid for a single run")
+	end)
+	describe(":Run", function()
+		-- TODO: Query Queue!
+		pending("throws an error if the database has disconnected");
+		pending("executes instantly if the query has no placeholders");
+		pending("throws an error if the query has placeholders and hasn't been prepared")
+		pending("calls Database:Query")
+		pending("returns a promise")
+		pending("returns a promise for this run only")
 	end)
 end);

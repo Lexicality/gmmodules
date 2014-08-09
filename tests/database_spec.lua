@@ -500,3 +500,35 @@ describe("Database:Disconnect", function()
 		assert.spy(mockObj.Disconnect).was.called(1);
 	end)
 end)
+
+describe("Database:PrepareQuery", function()
+	local db, mockObj, cparams;
+	before_each(function()
+		mockObj = mock(copy(mockDB));
+		database.RegisterDBMethod("Mock", mockObj);
+		cparams = {
+			Username = "";
+			Hostname = "";
+			Password = "";
+			Database = "";
+		};
+		db = database.NewDatabase(cparams);
+	end)
+	after_each(function()
+		cparams = nil;
+		db = nil;
+		mockObj = nil;
+		database.RegisterDBMethod("Mock", invalidDB);
+	end)
+
+	it("should error if not given any text", function()
+		db:Connect();
+		assert.has.errors(function() db:PrepareQuery() end);
+	end)
+	it("should return a prepared query", function()
+		-- TODO: Use the database._PreparedQuery private somehow?
+		db:Connect();
+		local query = db:PrepareQuery("foo");
+		assert.is.table(query);
+	end)
+end)

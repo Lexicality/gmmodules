@@ -60,9 +60,26 @@ end
 
 -- Tests of internal functions
 describe("_new", function()
-	pending("should not return the actual table passed");
-	pending("should return an instance of the passed table");
-	pending("should call the Init function if available");
+	it("should not return the actual table passed", function()
+		local value = { a = 1};
+		assert.are_not.equal( value, database._new(value) );
+	end);
+	it("should return an instance of the passed table", function()
+		local value = { a = 1, b = 2, c = { d = 4 } };
+		local inst = database._new( value );
+		for k, v in pairs( value ) do
+			assert.are.equal(inst[k], v);
+		end
+		inst.e = 5;
+		assert.is_nil( value.e );
+	end);
+	it("should call the Init function if available", function()
+		local value = { Init = spy.new(function() end) };
+		local one, two = "one", "two";
+		local inst = database._new( value, one, two );
+		assert.spy(value.Init).was.called(1);
+		assert.spy(value.Init).was.called_with( inst, one, two );
+	end);
 end)
 
 describe("_bind", function()

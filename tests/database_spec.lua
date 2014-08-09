@@ -66,9 +66,21 @@ describe("_new", function()
 end)
 
 describe("_bind", function()
-	pending("should do nothing if passed nothing");
-	pending("should do nothing if not passed a self");
-	pending("should return a function that always gets called with self");
+	it("should do nothing if passed nothing", function()
+		assert.is_nil( database._bind() );
+	end);
+	it("should do nothing if not passed a self", function()
+		local function func() end;
+		assert.is.equal(func, database._bind(func));
+	end);
+	it("should return a function that always gets called with self", function()
+		local func = spy.new(function() end);
+		local one, two, three = "one", "two", "three";
+		local func2 = database._bind(func, one);
+		func2(two, three);
+		assert.spy(func).was.called(1);
+		assert.spy(func).was.called_with(one, two, three);
+	end);
 end)
 
 describe("_bindCArgs", function()

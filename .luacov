@@ -22,6 +22,7 @@ return {
 		"luacov/runner$",
 		"luacov/stats$",
 		"luacov/tick$",
-		"luarocks/*"
+		"luarocks/*",
+		"_spec$"
 	},
 }

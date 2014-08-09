@@ -396,9 +396,23 @@ describe("Database:Escape", function()
 		database.RegisterDBMethod("Mock", invalidDB);
 	end)
 
-	pending("causes an error on a non-connected database")
-	pending("passes arguments verbatum to the db method")
-	pending("returns the db method's responses")
+	it("causes an error on a non-connected database", function()
+		assert.has_errors(function() db:Escape("foobar") end);
+	end)
+	it("passes arguments verbatum to the db method", function()
+		db:Connect();
+		local value = "foobar";
+		db:Escape(value);
+		assert.spy( mockObj.Escape ).was.called(1);
+		assert.spy( mockObj.Escape ).was.called_with( mockObj, value );
+	end)
+	it("returns the db method's responses", function()
+		local value, response = "foobar", "barfoo";
+		mockObj.Escape = spy.new(function() return response end)
+		db:Connect();
+		local ret = db:Escape(value);
+		assert.is.equal(ret, response);
+	end)
 end)
 
 describe("Database:Disconnect", function()

@@ -72,8 +72,19 @@ describe("_bind", function()
 end)
 
 describe("_bindCArgs", function()
-	pending("should do nothing if not pased cargs");
-	pending("should return a function that unpacks the passed arugments into it as the second arguments")
+	it("should do nothing if not pased cargs", function()
+		local function func() end
+		assert.are.equal(database._bindCArgs(func), func);
+	end);
+	it("should return a function that unpacks the passed arugments into it as the second arguments", function()
+		local func = spy.new(function() end);
+		local one, two, three, four = "one", "two", "three", "four";
+		local func2 = database._bindCArgs(func, {two, three});
+		assert.are_not.equal(func, func2);
+		func2(one, four);
+		assert.spy(func).was.called(1);
+		assert.spy(func).was.called_with(one, two, three);
+	end);
 end)
 
 describe("_checkmodule", function()

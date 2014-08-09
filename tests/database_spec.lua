@@ -364,6 +364,17 @@ describe("Database:Connect", function()
 		assert.spy(mockObj2.Connect).was.called_with(mockObj2, cparams, db);
 	end)
 
+	it("should error if asked to use an invalid db method", function()
+		cparams["DBMethod"] = "doesn't exist";
+		db = database.NewDatabase(cparams);
+		assert.has.errors(function() db:Connect() end)
+	end)
+
+	it("should error if there are no db methods available", function()
+		database.RegisterDBMethod("Mock", invalidDB);
+		assert.has.errors(function() db:Connect() end);
+	end)
+
 	it("Should return itself on successful connect", function()
 		local a, b = stub.new(), stub.new();
 		db:Connect():Then(thenable(a), thenable(b));

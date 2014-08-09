@@ -435,6 +435,13 @@ describe("Database:Disconnect", function()
 		database.RegisterDBMethod("Mock", invalidDB);
 	end)
 
-	pending("does nothing on a non-connected database")
-	pending("calls the db method")
+	it("does nothing on a non-connected database", function()
+		assert.has_no_errors(function() db:Disconnect() end);
+		assert.spy(mockObj.Disconnect).was_not.called();
+	end)
+	it("calls the db method", function()
+		db:Connect();
+		assert.has_no_errors(function() db:Disconnect() end);
+		assert.spy(mockObj.Disconnect).was.called(1);
+	end)
 end)

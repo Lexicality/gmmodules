@@ -309,7 +309,7 @@ describe("GetDBMethod", function()
 end)
 
 -- Somewhat more involved tests
-describe("Database:Connect", function()
+describe("Database", function()
 	local db, mockObj, cparams;
 	before_each(function()
 		mockObj = mock(copy(mockDB));
@@ -328,207 +328,134 @@ describe("Database:Connect", function()
 		mockObj = nil;
 		database.RegisterDBMethod("Mock", invalidDB);
 	end)
-
-	it("Should default to the only available method", function()
-		db:Connect()
-		assert.spy(mockObj.CanSelect).was.called();
-		assert.spy(mockObj.Connect).was.called(1);
-		assert.spy(mockObj.Connect).was.called_with(mockObj, cparams, db);
-	end)
-
-	it("Should use the requested method", function()
-		-- Teardown
-		finally(function()
-			database.RegisterDBMethod("Mock 1", invalidDB);
-			database.RegisterDBMethod("Mock 2", invalidDB);
-			database.RegisterDBMethod("Mock 3", invalidDB);
-		end);
-
-		-- Setup
-		local mockObj1 = mock(copy(mockDB));
-		local mockObj2 = mock(copy(mockDB));
-		local mockObj3 = mock(copy(mockDB));
-		database.RegisterDBMethod("Mock 1", mockObj1);
-		database.RegisterDBMethod("Mock 2", mockObj2);
-		database.RegisterDBMethod("Mock 3", mockObj3);
-
-		cparams["DBMethod"] = "Mock 2";
-		db = database.NewDatabase(cparams);
-
-		-- Test
-		db:Connect()
-		assert.spy(mockObj.Connect).was_not.called();
-		assert.spy(mockObj1.Connect).was_not.called();
-		assert.spy(mockObj3.Connect).was_not.called();
-		assert.spy(mockObj2.Connect).was.called(1);
-		assert.spy(mockObj2.Connect).was.called_with(mockObj2, cparams, db);
-	end)
-
-	it("should error if asked to use an invalid db method", function()
-		cparams["DBMethod"] = "doesn't exist";
-		db = database.NewDatabase(cparams);
-		assert.has.errors(function() db:Connect() end)
-	end)
-
-	it("should error if there are no db methods available", function()
-		database.RegisterDBMethod("Mock", invalidDB);
-		assert.has.errors(function() db:Connect() end);
-	end)
-
-	it("Should return itself on successful connect", function()
-		local a, b = stub.new(), stub.new();
-		db:Connect():Then(thenable(a), thenable(b));
-		assert.spy(a).was.called(1);
-		assert.spy(a).was.called_with(db);
-		assert.spy(b).was_not.called();
-	end)
-end)
-
-describe("Database:Query", function()
-	local db, mockObj, cparams;
-	before_each(function()
-		mockObj = mock(copy(mockDB));
-		database.RegisterDBMethod("Mock", mockObj);
-		cparams = {
-			Username = "";
-			Hostname = "";
-			Password = "";
-			Database = "";
-		};
-		db = database.NewDatabase(cparams);
-	end)
-	after_each(function()
-		cparams = nil;
-		db = nil;
-		mockObj = nil;
-		database.RegisterDBMethod("Mock", invalidDB);
-	end)
-	it("Should throw an error if the database isn't connected", function()
-		assert.has.error(function() db:Query("foo") end);
-		db:Connect();
-		assert.has_no.errors(function() db:Query("foo") end);
-	end);
-	it("Should call the underlying method with no changes", function()
-		db:Connect();
-		local query = "foo";
-		db:Query(query);
-		assert.spy(mockObj.Escape).was_not.called();
-		assert.spy(mockObj.Query).was.called(1)
-		assert.spy(mockObj.Query).was.called_with(mockObj, query);
-	end)
-	it("Should return a promise", function()
-		local resp = "It worked!";
-		mockObj.Query = spy.new(function()
-			return Deferred():Resolve(resp):Promise();
+	describe(":Connect", function()
+		it("Should default to the only available method", function()
+			db:Connect()
+			assert.spy(mockObj.CanSelect).was.called();
+			assert.spy(mockObj.Connect).was.called(1);
+			assert.spy(mockObj.Connect).was.called_with(mockObj, cparams, db);
 		end)
-		local query = "foo";
-		db:Connect();
-		local a, b = stub.new(), stub.new();
-		db:Query(query):Then(thenable(a), thenable(b));
-		assert.spy(a).was.called(1);
-		assert.spy(a).was.called_with(resp);
-		assert.spy(b).was_not.called();
-	end)
-end)
 
-describe("Database:Escape", function()
-	local db, mockObj, cparams;
-	before_each(function()
-		mockObj = mock(copy(mockDB));
-		database.RegisterDBMethod("Mock", mockObj);
-		cparams = {
-			Username = "";
-			Hostname = "";
-			Password = "";
-			Database = "";
-		};
-		db = database.NewDatabase(cparams);
-	end)
-	after_each(function()
-		cparams = nil;
-		db = nil;
-		mockObj = nil;
-		database.RegisterDBMethod("Mock", invalidDB);
-	end)
+		it("Should use the requested method", function()
+			-- Teardown
+			finally(function()
+				database.RegisterDBMethod("Mock 1", invalidDB);
+				database.RegisterDBMethod("Mock 2", invalidDB);
+				database.RegisterDBMethod("Mock 3", invalidDB);
+			end);
 
-	it("causes an error on a non-connected database", function()
-		assert.has_errors(function() db:Escape("foobar") end);
-	end)
-	it("passes arguments verbatum to the db method", function()
-		db:Connect();
-		local value = "foobar";
-		db:Escape(value);
-		assert.spy( mockObj.Escape ).was.called(1);
-		assert.spy( mockObj.Escape ).was.called_with( mockObj, value );
-	end)
-	it("returns the db method's responses", function()
-		local value, response = "foobar", "barfoo";
-		mockObj.Escape = spy.new(function() return response end)
-		db:Connect();
-		local ret = db:Escape(value);
-		assert.is.equal(ret, response);
-	end)
-end)
+			-- Setup
+			local mockObj1 = mock(copy(mockDB));
+			local mockObj2 = mock(copy(mockDB));
+			local mockObj3 = mock(copy(mockDB));
+			database.RegisterDBMethod("Mock 1", mockObj1);
+			database.RegisterDBMethod("Mock 2", mockObj2);
+			database.RegisterDBMethod("Mock 3", mockObj3);
 
-describe("Database:Disconnect", function()
-	local db, mockObj, cparams;
-	before_each(function()
-		mockObj = mock(copy(mockDB));
-		database.RegisterDBMethod("Mock", mockObj);
-		cparams = {
-			Username = "";
-			Hostname = "";
-			Password = "";
-			Database = "";
-		};
-		db = database.NewDatabase(cparams);
-	end)
-	after_each(function()
-		cparams = nil;
-		db = nil;
-		mockObj = nil;
-		database.RegisterDBMethod("Mock", invalidDB);
+			cparams["DBMethod"] = "Mock 2";
+			db = database.NewDatabase(cparams);
+
+			-- Test
+			db:Connect()
+			assert.spy(mockObj.Connect).was_not.called();
+			assert.spy(mockObj1.Connect).was_not.called();
+			assert.spy(mockObj3.Connect).was_not.called();
+			assert.spy(mockObj2.Connect).was.called(1);
+			assert.spy(mockObj2.Connect).was.called_with(mockObj2, cparams, db);
+		end)
+
+		it("should error if asked to use an invalid db method", function()
+			cparams["DBMethod"] = "doesn't exist";
+			db = database.NewDatabase(cparams);
+			assert.has.errors(function() db:Connect() end)
+		end)
+
+		it("should error if there are no db methods available", function()
+			database.RegisterDBMethod("Mock", invalidDB);
+			assert.has.errors(function() db:Connect() end);
+		end)
+
+		it("Should return itself on successful connect", function()
+			local a, b = stub.new(), stub.new();
+			db:Connect():Then(thenable(a), thenable(b));
+			assert.spy(a).was.called(1);
+			assert.spy(a).was.called_with(db);
+			assert.spy(b).was_not.called();
+		end)
 	end)
 
-	it("does nothing on a non-connected database", function()
-		assert.has_no_errors(function() db:Disconnect() end);
-		assert.spy(mockObj.Disconnect).was_not.called();
-	end)
-	it("calls the db method", function()
-		db:Connect();
-		assert.has_no_errors(function() db:Disconnect() end);
-		assert.spy(mockObj.Disconnect).was.called(1);
-	end)
-end)
-
-describe("Database:PrepareQuery", function()
-	local db, mockObj, cparams;
-	before_each(function()
-		mockObj = mock(copy(mockDB));
-		database.RegisterDBMethod("Mock", mockObj);
-		cparams = {
-			Username = "";
-			Hostname = "";
-			Password = "";
-			Database = "";
-		};
-		db = database.NewDatabase(cparams);
-	end)
-	after_each(function()
-		cparams = nil;
-		db = nil;
-		mockObj = nil;
-		database.RegisterDBMethod("Mock", invalidDB);
+	describe(":Query", function()
+		it("Should throw an error if the database isn't connected", function()
+			assert.has.error(function() db:Query("foo") end);
+			db:Connect();
+			assert.has_no.errors(function() db:Query("foo") end);
+		end);
+		it("Should call the underlying method with no changes", function()
+			db:Connect();
+			local query = "foo";
+			db:Query(query);
+			assert.spy(mockObj.Escape).was_not.called();
+			assert.spy(mockObj.Query).was.called(1)
+			assert.spy(mockObj.Query).was.called_with(mockObj, query);
+		end)
+		it("Should return a promise", function()
+			local resp = "It worked!";
+			mockObj.Query = spy.new(function()
+				return Deferred():Resolve(resp):Promise();
+			end)
+			local query = "foo";
+			db:Connect();
+			local a, b = stub.new(), stub.new();
+			db:Query(query):Then(thenable(a), thenable(b));
+			assert.spy(a).was.called(1);
+			assert.spy(a).was.called_with(resp);
+			assert.spy(b).was_not.called();
+		end)
 	end)
 
-	it("should error if not given any text", function()
-		db:Connect();
-		assert.has.errors(function() db:PrepareQuery() end);
+	describe(":Escape", function()
+
+		it("causes an error on a non-connected database", function()
+			assert.has_errors(function() db:Escape("foobar") end);
+		end)
+		it("passes arguments verbatum to the db method", function()
+			db:Connect();
+			local value = "foobar";
+			db:Escape(value);
+			assert.spy( mockObj.Escape ).was.called(1);
+			assert.spy( mockObj.Escape ).was.called_with( mockObj, value );
+		end)
+		it("returns the db method's responses", function()
+			local value, response = "foobar", "barfoo";
+			mockObj.Escape = spy.new(function() return response end)
+			db:Connect();
+			local ret = db:Escape(value);
+			assert.is.equal(ret, response);
+		end)
 	end)
-	it("should return a prepared query", function()
-		-- TODO: Use the database._PreparedQuery private somehow?
-		db:Connect();
-		local query = db:PrepareQuery("foo");
-		assert.is.table(query);
+
+	describe(":Disconnect", function()
+		it("does nothing on a non-connected database", function()
+			assert.has_no_errors(function() db:Disconnect() end);
+			assert.spy(mockObj.Disconnect).was_not.called();
+		end)
+		it("calls the db method", function()
+			db:Connect();
+			assert.has_no_errors(function() db:Disconnect() end);
+			assert.spy(mockObj.Disconnect).was.called(1);
+		end)
 	end)
-end)
+
+	describe(":PrepareQuery", function()
+		it("should error if not given any text", function()
+			db:Connect();
+			assert.has.errors(function() db:PrepareQuery() end);
+		end)
+		it("should return a prepared query", function()
+			-- TODO: Use the database._PreparedQuery private somehow?
+			db:Connect();
+			local query = db:PrepareQuery("foo");
+			assert.is.table(query);
+		end)
+	end)
+end);

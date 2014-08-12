@@ -471,6 +471,7 @@ end);
 
 describe("PreparedQuery", function()
 	local db, mockObj, cparams, queryFunc;
+	local one, two, three = "one", "two", "three";
 	before_each(function()
 		mockObj = mock(copy(mockDB));
 		mockObj.Query = spy.new(function(...)
@@ -502,19 +503,132 @@ describe("PreparedQuery", function()
 		before_each(function()
 			query = db:PrepareQuery("foobar");
 			done, fail, prog = stub(), stub(), stub();
-			query:SetCallbacks(done, fail, prog);
+			query:SetCallbacks({
+				Done = done,
+				Fail = fail,
+				Progress = prog
+			});
 		end);
 		after_each(function()
 			done, fail, prog = nil, nil, nil;
 			query = nil;
 		end)
 
-		pending("calls the done callback on a successful query");
-		pending("calls the fail callback on a successful query");
-		pending("calls the prog callback on query progress");
-		pending("overwrites previous callbacks")
-		pending("doesn't require all three arguments")
-		pending("removes unspecified callbacks when overwriting")
+		it("calls the done callback on a successful query", function()
+			queryFunc = function(def)
+				def:Resolve(one);
+			end
+			query:Run();
+			assert.spy(done).was.called(1);
+			assert.spy(done).was.called_with(one);
+			assert.spy(fail).was_not.called();
+		end);
+		it("calls the fail callback on a successful query", function()
+			queryFunc = function(def)
+				def:Reject(one);
+			end
+			query:Run();
+			assert.spy(fail).was.called(1);
+			assert.spy(fail).was.called_with(one);
+			assert.spy(done).was_not.called();
+		end);
+		it("calls the prog callback on query progress", function()
+			queryFunc = function(def)
+				def:Progress(one);
+				def:Progress(two);
+			end
+			query:Run();
+			assert.spy(prog).was.called(2);
+			assert.spy(prog).was.called_with(one);
+			assert.spy(prog).was.called_with(two);
+		end);
+		it("overwrites previous callbacks", function()
+			queryFunc = function(def)
+				def:Resolve(one);
+			end
+			local newdone = stub()
+			query:SetCallbacks({
+				Done = newdone
+			});
+			query:Run();
+			assert.spy(done).was_not.called();
+			assert.spy(newdone).was.called(1);
+			assert.spy(newdone).was.called_with(one);
+		end)
+		it("binds callbacks to the passed context", function()
+			queryFunc = function(def)
+				def:Resolve(two);
+			end
+			query:SetCallbacks({
+				Done = done
+			}, one);
+			query:Run();
+			assert.spy(done).was.called(1);
+			assert.spy(done).was.called_with(one, two);
+		end)
+		it("doesn't require all three arguments", function()
+			assert.has_no.errors(function()
+				query:SetCallbacks({
+					Done = nil,
+					Fail = fail,
+					Progress = prog
+				});
+			end);
+			assert.has_no.errors(function()
+				query:SetCallbacks({
+					Done = done,
+					Fail = nil,
+					Progress = prog
+				});
+			end);
+			assert.has_no.errors(function()
+				query:SetCallbacks({
+					Done = done,
+					Fail = fail,
+					Progress = nil
+				});
+			end);
+			assert.has_no.errors(function()
+				query:SetCallbacks({
+					Done = done,
+					Fail = nil,
+					Progress = nil
+				});
+			end);
+			assert.has_no.errors(function()
+				query:SetCallbacks({
+					Done = nil,
+					Fail = fail,
+					Progress = nil
+				});
+			end);
+			assert.has_no.errors(function()
+				query:SetCallbacks({
+					Done = nil,
+					Fail = nil,
+					Progress = prog
+				});
+			end);
+			assert.has_no.errors(function()
+				query:SetCallbacks({
+					Done = done,
+					Fail = nil,
+					Progress = prog
+				});
+			end);
+		end)
+		it("removes unspecified callbacks when overwriting", function()
+			queryFunc = function(def)
+				def:Resolve(one);
+			end
+			query:SetCallbacks({
+				Done = nil,
+				Fail = fail,
+				Progress = prog
+			});
+			query:Run();
+			assert.spy(done).was_not.called();
+		end)
 	end)
 	describe(":SetCallbackArgs", function()
 		local done, fail, prog, query;

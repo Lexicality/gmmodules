@@ -534,13 +534,15 @@ describe("PreparedQuery", function()
 		end);
 		it("calls the prog callback on query progress", function()
 			queryFunc = function(def)
-				def:Progress(one);
-				def:Progress(two);
+				def:Notify(one);
+				def:Notify(two);
+				def:Resolve(three);
 			end
 			query:Run();
 			assert.spy(prog).was.called(2);
 			assert.spy(prog).was.called_with(one);
 			assert.spy(prog).was.called_with(two);
+			assert.spy(prog).was_not.called_with(three);
 		end);
 		it("overwrites previous callbacks", function()
 			queryFunc = function(def)

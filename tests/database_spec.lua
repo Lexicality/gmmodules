@@ -84,7 +84,8 @@ end)
 
 describe("_bind", function()
 	it("should do nothing if passed nothing", function()
-		assert.is_nil( database._bind() );
+		local res = database._bind();
+		assert.is_nil( res );
 	end);
 	it("should do nothing if not passed a self", function()
 		local function func() end;

@@ -391,7 +391,14 @@ describe("Database", function()
 			assert.has_no.errors(function() db:Query("foo") end);
 		end);
 		-- TODO: Query Queue!
-		pending("should throw an error if the database disconnects")
+		it("should throw an error if the database disconnects", function()
+			local IsConnected = true
+			mockObj.IsConnected = spy.new(function() return IsConnected; end)
+			db:Connect();
+			assert.has_no.errors(function() db:Query("foo") end);
+			IsConnected = false;
+			assert.has.errors(function() db:Query("foo") end);
+		end)
 		it("Should call the underlying method with no changes", function()
 			db:Connect();
 			local query = "foo";

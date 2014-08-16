@@ -268,6 +268,9 @@ describe("IsValidDBMethod", function()
 	teardown(function()
 		database.RegisterDBMethod("Mock", invalidDB)
 	end)
+	it("errors if not passed anything", function()
+		assert.has.errors(function() database.IsValidDBMethod() end);
+	end)
 	it("should return true for valid methods", function()
 		assert.is_true(database.IsValidDBMethod("Mock"));
 	end)

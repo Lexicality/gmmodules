@@ -639,7 +639,11 @@ describe("PreparedQuery", function()
 		before_each(function()
 			query = db:PrepareQuery("foobar");
 			done, fail, prog = stub(), stub(), stub();
-			query:SetCallbacks(done, fail, prog);
+			query:SetCallbacks({
+				Done = done,
+				Fail = fail,
+				Progress = prog
+			});
 			queryFunc = function(def)
 				def:Resolve(one);
 			end
@@ -650,9 +654,52 @@ describe("PreparedQuery", function()
 			query = nil;
 		end)
 
-		pending("passes the arguments to all callbacks")
-		pending("only passes each set once per run")
-		pending("can be reset by passing nothing")
+		describe("passes the arguments to", function()
+			before_each(function()
+				query:SetCallbackArgs(two, three);
+			end)
+
+			it("progress callbacks", function()
+				queryFunc = function(def)
+					def:Notify(one);
+				end;
+				query:Run();
+				assert.spy(prog).was.called(1);
+				assert.spy(prog).was.called_with(one, two, three);
+			end)
+			it("success callbacks", function()
+				queryFunc = function(def)
+					def:Resolve(one);
+				end;
+				query:Run();
+				assert.spy(done).was.called(1);
+				assert.spy(done).was.called_with(one, two, three);
+			end)
+			it("failure callbacks", function()
+				queryFunc = function(def)
+					def:Reject(one);
+				end;
+				query:Run();
+				assert.spy(fail).was.called(1);
+				assert.spy(fail).was.called_with(one, two, three);
+			end)
+		end)
+		it("only passes each set once per run", function()
+			query:SetCallbackArgs(two, three);
+			query:Run();
+			query:Run();
+			assert.spy(done).was.called(2);
+			assert.spy(done).was.called_with(one, two, three);
+			assert.spy(done).was.called_with(one);
+		end)
+		it("can be reset by passing nothing", function()
+			query:SetCallbackArgs(two, three);
+			query:SetCallbackArgs();
+			query:Run();
+			assert.spy(done).was.called(1);
+			assert.spy(done).was_not.called_with(one, two, three);
+			assert.spy(done).was.called_with(one);
+		end)
 	end)
 	describe(":Prepare", function()
 		pending("does nothing if the query has no placeholders")

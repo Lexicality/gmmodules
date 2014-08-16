@@ -471,6 +471,10 @@ describe("Database", function()
 			assert.is.table(query);
 		end)
 	end)
+
+	describe(":SetConnectionParameter", function()
+		pending("FIXME!")
+	end)
 end);
 
 describe("PreparedQuery", function()

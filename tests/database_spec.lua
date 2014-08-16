@@ -702,12 +702,58 @@ describe("PreparedQuery", function()
 		end)
 	end)
 	describe(":Prepare", function()
-		pending("does nothing if the query has no placeholders")
-		pending("calls Database:Escape for each arg")
-		pending("errors if there are more placeholders than args")
-		pending("silently discards extra args")
-		pending("sprintfs arguments into the query")
-		pending("is only valid for a single run")
+		local one, two, three = "one", "two", "three";
+		it("does nothing if the query has no placeholders", function()
+			local qtext = 'my prepared query';
+			local query = db:PrepareQuery(qtext);
+			query:Prepare(one, two);
+			query:Run();
+			assert.spy(mockObj.Query).was.called(1);
+			assert.spy(mockObj.Query).was.called_with(mockObj, qtext);
+		end)
+		it("calls Database:Escape for each arg", function()
+			local query = db:PrepareQuery("%s %s %s");
+			query:Prepare(one, two, three);
+			assert.spy(mockObj.Escape).was.called(3);
+			assert.spy(mockObj.Escape).was.called_with(mockObj, one);
+			assert.spy(mockObj.Escape).was.called_with(mockObj, two);
+			assert.spy(mockObj.Escape).was.called_with(mockObj, three);
+		end)
+		it("errors if there are more placeholders than args", function()
+			local query = db:PrepareQuery("%s %s");
+			assert.has.errors(function() query:Prepare(one) end);
+		end)
+		it("silently discards extra args", function()
+			local query = db:PrepareQuery("%s");
+			assert.has_no.errors(function() query:Prepare(one, two) end);
+			query:Run();
+			assert.spy(mockObj.Query).was.called(1);
+			assert.spy(mockObj.Query).was.called_with(mockObj, one);
+		end)
+		it("overwrites a previous prepared state", function()
+			local query = db:PrepareQuery("%s");
+			query:Prepare(one);
+			query:Prepare(two)
+			query:Run();
+			assert.spy(mockObj.Query).was.called(1);
+			assert.spy(mockObj.Query).was.called_with(mockObj, two);
+			assert.spy(mockObj.Query).was_not.called_with(mockObj, one);
+		end)
+		it("sprintfs arguments into the query", function()
+			local qtext = '"% 5s" %02.2f %d';
+			local pi = 3.141596;
+			local query = db:PrepareQuery(qtext);
+			query:Prepare(one, pi, pi);
+			query:Run();
+			assert.spy(mockObj.Query).was.called(1);
+			assert.spy(mockObj.Query).was.called_with(mockObj, string.format(qtext, one, pi, pi));
+		end)
+		it("is only valid for a single run", function()
+			local query = db:PrepareQuery("%s");
+			query:Prepare(one);
+			query:Run();
+			assert.has.errors(function() query:Run() end);
+		end)
 	end)
 	describe(":Run", function()
 		-- TODO: Query Queue!

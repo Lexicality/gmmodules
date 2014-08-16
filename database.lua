@@ -343,7 +343,7 @@ end
 -- @return A Database object
 -- @see Database
 function NewDatabase( connection )
-    if ( not type( connection ) == "table" ) then
+    if ( type( connection ) ~= "table" ) then
         error( "Invalid connection data passed!", 2 );
     end
     req( connection, "Hostname" );

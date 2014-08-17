@@ -764,11 +764,70 @@ describe("PreparedQuery", function()
 	end)
 	describe(":Run", function()
 		-- TODO: Query Queue!
-		pending("throws an error if the database has disconnected");
-		pending("executes instantly if the query has no placeholders");
-		pending("throws an error if the query has placeholders and hasn't been prepared")
-		pending("calls Database:Query")
-		pending("returns a promise")
-		pending("returns a promise for this run only")
+		it("throws an error if the database has disconnected", function()
+			local IsConnected = true
+			mockObj.IsConnected = spy.new(function() return IsConnected; end)
+			db:Connect();
+			local query = db:PrepareQuery("foobar");
+			assert.has_no.errors(function() query:Run() end);
+			IsConnected = false;
+			assert.has.errors(function() query:Run() end);
+		end);
+		it("executes instantly if the query has no placeholders", function()
+			local qtext = "foobar";
+			local query = db:PrepareQuery(qtext);
+			assert.has_no.errors(function() query:Run() end);
+			assert.spy(mockObj.Query).was.called(1);
+			assert.spy(mockObj.Query).was.called_with(mockObj, qtext);
+			assert.spy(mockObj.Escape).was_not.called();
+		end);
+		it("throws an error if the query has placeholders and hasn't been prepared", function()
+			local query = db:PrepareQuery("%s");
+			assert.has.errors(function() query:Run() end);
+		end)
+		it("calls Database:Query", function()
+			local qtext = "foobar";
+			local query = db:PrepareQuery(qtext);
+			query:Run();
+			assert.spy(mockObj.Query).was.called(1);
+			assert.spy(mockObj.Query).was.called_with(mockObj, qtext);
+		end)
+		it("returns a promise", function()
+			local query = db:PrepareQuery("foobar");
+			local done = stub();
+			local one = "one";
+			queryFunc = function(def)
+				def:Resolve();
+			end
+
+
+			local prom = query:Run();
+			assert.is.table(prom);
+			assert.is_true(prom._IsPromise);
+			assert.is_function(prom.Then);
+			prom:Then(thenable(done));
+			assert.spy(done).was.called(1);
+		end)
+		it("returns a promise for this run only", function()
+			local query = db:PrepareQuery("foobar");
+			local done1, done2 = stub(), stub();
+			local one, two = "one", "two";
+			local retval;
+			queryFunc = function(def)
+				def:Resolve(retval);
+			end
+
+			retval = one;
+			query:Run():Then(thenable(done1));
+			retval = two;
+			query:Run():Then(thenable(done2));
+
+			assert.spy(done1).was.called(1);
+			assert.spy(done2).was.called(1);
+			assert.spy(done1).was.called_with(one);
+			assert.spy(done2).was.called_with(two);
+			assert.spy(done1).was_not.called_with(two);
+			assert.spy(done2).was_not.called_with(one);
+		end)
 	end)
 end);

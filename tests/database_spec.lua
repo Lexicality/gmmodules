@@ -122,12 +122,12 @@ describe("_checkmodule", function()
 		assert.is_false( database._checkmodule('tmysql') );
 	end)
 	-- This needs heavy mocking to work
-	describe("in a faked environment", function()
-		pending("should request a module suffixed for the system it's on")
-		pending("should request a module prefixed for the state it is in")
-		pending("should check if the requested module is available first")
-		pending("should require the module if it is available")
-	end);
+	-- describe("in a faked environment", function()
+	-- 	pending("should request a module suffixed for the system it's on")
+	-- 	pending("should request a module prefixed for the state it is in")
+	-- 	pending("should check if the requested module is available first")
+	-- 	pending("should require the module if it is available")
+	-- end);
 end)
 
 -- "Simple" tests

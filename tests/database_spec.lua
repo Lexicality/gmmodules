@@ -321,10 +321,10 @@ describe("Database", function()
 		mockObj = mock(copy(mockDB));
 		database.RegisterDBMethod("Mock", mockObj);
 		cparams = {
-			Username = "";
-			Hostname = "";
-			Password = "";
-			Database = "";
+			Username = "username";
+			Hostname = "hostname";
+			Password = "password";
+			Database = "database";
 		};
 		db = database.NewDatabase(cparams);
 	end)
@@ -494,10 +494,10 @@ describe("PreparedQuery", function()
 		end
 		database.RegisterDBMethod("Mock", mockObj);
 		cparams = {
-			Username = "";
-			Hostname = "";
-			Password = "";
-			Database = "";
+			Username = "username";
+			Hostname = "hostname";
+			Password = "password";
+			Database = "database";
 		};
 		db = database.NewDatabase(cparams);
 		db:Connect();

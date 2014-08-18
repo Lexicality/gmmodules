@@ -3,7 +3,9 @@ _G.ErrorNoHalt = function() end
 -- Given that busted doesn't do this (despite saying it does)
 _G._TEST = true;
 
-require "database";
+local database = require "database";
+local drivers = require "database_drivers";
+
 
 local Deferred = require 'promises';
 
@@ -119,7 +121,7 @@ end)
 
 describe("_checkmodule", function()
 	it("should not do anything outside of Garry's Mod", function()
-		assert.is_false( database._checkmodule('tmysql') );
+		assert.is_false( drivers._checkmodule('tmysql') );
 	end)
 	-- This needs heavy mocking to work
 	-- describe("in a faked environment", function()

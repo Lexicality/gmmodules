@@ -475,7 +475,40 @@ describe("Database", function()
 	end)
 
 	describe(":SetConnectionParameter", function()
-		pending("FIXME!")
+		local constub, orighost;
+		before_each(function()
+			constub = stub();
+			local prevc = mockObj.Connect
+			mockObj.Connect = spy.new(function(obj, args)
+				constub(args.Hostname)
+				return prevc(obj.args);
+			end);
+			orighost = cparams.Hostname;
+		end)
+		after_each(function()
+			constub = nil;
+		end)
+		it("overrides connection parameters", function()
+			local newval = 'foobar';
+			db:SetConnectionParameter('Hostname', newval);
+			db:Connect();
+			assert.spy(constub).was.called_with(newval);
+			assert.spy(constub).was_not.called_with(orighost);
+		end)
+		it("does nothing to active connections", function()
+			local newval = 'foobar';
+			db:Connect();
+			db:SetConnectionParameter('Hostname', newval);
+			assert.spy(constub).was_not.called_with(newval);
+			assert.spy(constub).was.called_with(orighost);
+		end)
+		it("sets the parameters for the next Connect call", function()
+			local newval = 'foobar';
+			db:Connect();
+			db:SetConnectionParameter('Hostname', newval);
+			db:Connect();
+			assert.spy(constub).was.called_with(newval);
+		end)
 	end)
 end);
 

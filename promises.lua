@@ -1,6 +1,6 @@
 --[[
 	promises.lua
-	Copyright (c) 2013 Lex Robinson
+	Copyright (c) 2013-2014 Lex Robinson
 	This code is freely available under the MIT License
 --]]
 

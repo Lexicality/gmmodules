@@ -1,6 +1,6 @@
 --[[
     ~ Universal Database GLua Module ~
-    Copyright (c) 2012-2013 Lex Robinson
+    Copyright (c) 2012-2014 Lex Robinson
 
     Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
     associated documentation files ( the "Software" ), to deal in the Software without restriction,

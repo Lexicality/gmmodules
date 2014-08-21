@@ -181,7 +181,6 @@ local function getAdminDetails( admin )
 end
 local function errCallback( midtext, hascontext )
     local text = string.format( "Unable to %s: %%s", midtext );
-    notifyerror( "SQL Error while checking ", self.name, "'s ban status! ", err );
     if ( hascontext ) then
         return function( _, err, midformat )
             if ( midformat ) then
@@ -664,7 +663,7 @@ function GetActiveBans( pageNum, numPerPage, callback )
     numPerPage = numPerPage or 20;
     local offset = ((pageNum - 1) * numPerPage);
     local promise = queries["Get Active Bans"]
-        :Prepare( config.dbprefix, limit, offset )
+        :Prepare( config.dbprefix, numPerPage, offset )
         :SetCallbackArgs( pageNum )
         :Run()
         :Then( activeBansDataTransform );

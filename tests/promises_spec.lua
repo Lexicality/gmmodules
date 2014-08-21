@@ -7,6 +7,9 @@ local Deferred = require 'promises';
 -- for k,v in pairs(Deferred) do print(k,v); end
 -- do return end
 
+-- hurrdurr
+local test_pending = pending;
+
 
 -- Tests stolen from https:--github.com/domenic/promise-tests
 function fulfilled( value )
@@ -548,5 +551,83 @@ describe("Promise:Notify", function()
         local pending = pending();
         pending.reject(sentinel);
         assert.has.error(function() pending.notify(other) end);
+    end)
+end)
+
+describe("Promise:Error", function()
+    local _pending = pending;
+    local pending, promise, cback, cback_spy;
+    local err, other = 'Whoops!', 'not my fault';
+    local throw_error = function() error(err) end
+    local cback_func = function(msg)
+        local res = string.find(msg, err, 1, true);
+        assert(res, "Expected the error message!");
+    end
+    before_each(function()
+        pending = _pending()
+        promise = pending.promise();
+        cback = spy.new(cback_func);
+    end)
+    after_each(function()
+        pending = nil;
+        promise = nil;
+    end)
+    it("catches error() calls", function()
+        promise
+            :Then(throw_error)
+            :Error(cback, true);
+        pending.fulfill(other);
+        assert.spy(cback).was.called(1);
+    end)
+    it("catches runtime errors", function()
+        local cback = spy.new(function(msg)
+            -- vaguely accurate error message pattern
+            local res = string.find(msg, ".lua:%d+.*nil value");
+            assert(res, "Expected the error message!");
+        end)
+        promise
+            :Then(function() return nil + 1 end)
+            :Error(cback, true);
+        pending.fulfill(other);
+        assert.spy(cback).was.called(1);
+    end)
+    it("does not catch rejections", function()
+        promise:Error(cback, true)
+        pending.reject(other);
+        assert.spy(cback).was_not.called();
+    end)
+    it("does not catch resolves", function()
+        promise:Error(cback, true)
+        pending.fulfill(other);
+        assert.spy(cback).was_not.called();
+    end)
+    it("returns the promise it was called on", function()
+        local prom2 = promise:Error(stub(), true);
+        assert.is.equal(promise, prom2);
+    end)
+    it("does not affect return values", function()
+        cback1 = spy.new(function(...) cback_func(...); return other end);
+        cback2 = spy.new(cback_func);
+        cback3 = spy.new(cback_func);
+        promise
+            :Then(throw_error)
+            :Error(cback1, true)
+            :Fail(cback2)
+            :Then(nil, thenable(cback3))
+        pending.fulfill("foobar");
+        assert.spy(cback1).was.called(1);
+        assert.spy(cback2).was.called(1);
+        assert.spy(cback3).was.called(1);
+    end)
+    it("is called as if it was added with :Then (reject)", function()
+        promise = promise:Then(throw_error);
+        cback1 = spy.new(cback_func);
+        cback2 = spy.new(cback_func);
+        promise:Error(cback1, true);
+        assert.spy(cback1).was_not.called();
+        pending.fulfill(sentinel);
+        assert.spy(cback1).was.called(1);
+        promise:Error(cback2, true);
+        assert.spy(cback2).was.called(1);
     end)
 end)

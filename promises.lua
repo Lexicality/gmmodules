@@ -83,6 +83,7 @@ function Promise:Then( done, fail, prog )
 		done = function( ... )
 			local ret = { pcall( d, ... ) };
 			if ( not ret[1] ) then
+				def._promise._errd = true;
 				def:Reject( ret[2] );
 				return;
 			end
@@ -103,6 +104,7 @@ function Promise:Then( done, fail, prog )
 		fail = function( ... )
 			local ret = { pcall( f, ... ) };
 			if ( not ret[1] ) then
+				def._promise._errd = true;
 				def:Reject( ret[2] );
 				return;
 			end
@@ -191,6 +193,24 @@ function Promise:Progress( prog, _ )
 end;
 
 ---
+-- Adds a handler to be called when the Promise object is rejected due to an error
+-- @param err The handler function
+-- @return self
+function Promise:Error( err, _ )
+	if ( not _ ) then
+		err = pbind( err );
+	end
+	if ( self._state == 'fail' ) then
+		if ( self._errd ) then
+			err( unpack( self._res ) )
+		end
+	else
+		table.insert( self._errs, err );
+	end
+	return self;
+end
+
+---
 -- Adds a handler that gets called when the promise is either resolved or rejected
 -- @param alwy The handler function
 -- @return self
@@ -211,10 +231,12 @@ end;
 -- @see Deferred:Promise
 function Promise:_init()
 	self._state = 'pending';
+	self._errd = false;
 	self._dones = {};
 	self._fails = {};
 	self._progs = {};
 	self._alwys = {};
+	self._errs  = {};
 end;
 
 ---
@@ -268,6 +290,11 @@ function Deferred:Reject( ... )
 	p._res = { ... };
 	for _, f in pairs( p._fails ) do
 		f( ... );
+	end
+	if ( self._promise._errd ) then
+		for _, f in pairs( p._errs ) do
+			f( ... );
+		end
 	end
 	for _, f in pairs( p._alwys ) do
 		f( ... );

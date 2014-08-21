@@ -11,8 +11,8 @@ local tmysql   = tmysql;
 local ipairs, paris, string, require
     = ipairs, paris, string, require
 -- GLua tings
-local timer, file, system, SERVER
-    = timer, file, system, SERVER
+local timer, file, system, SERVER, ErrorNoHalt
+    = timer, file, system, SERVER, ErrorNoHalt or print
 
 local _TEST = _TEST;
 

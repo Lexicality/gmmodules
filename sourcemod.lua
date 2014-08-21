@@ -32,6 +32,15 @@ sourcebans.SetConfig("dogroups", false);             -- Set user groups or not. 
 
 sourcebans.Activate();
 
+local table, os, string, player, concommand
+    = table, os, string, player, concommand
+
+local tonumber, pairs, Msg, ServerLog
+    = tonumber, pairs, Msg, ServerLog
+
+local HUD_PRINTCONSOLE, HUD_PRINTCHAT, HUD_PRINTCENTER
+    = HUD_PRINTCONSOLE, HUD_PRINTCHAT, HUD_PRINTCENTER
+
 local function notifymessage( ... )
     local words = table.concat( { "[" , os.date() , "][sourcemod.lua] " , ... }, "" ) .. "\n";
     ServerLog( words );

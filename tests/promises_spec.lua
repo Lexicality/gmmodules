@@ -347,6 +347,9 @@ describe("Promise:Done", function()
         assert.spy(two).was.called(1);
         assert.spy(two).was.called_with(sentinel);
     end)
+    it("silently absorbs errors", function()
+        fulfilled(sentinel):Done(function() error("Whoops!") end)
+    end)
 end)
 
 describe("Promise:Fail", function()
@@ -376,6 +379,9 @@ describe("Promise:Fail", function()
         assert.spy(one).was.called_with(sentinel);
         assert.spy(two).was.called(1);
         assert.spy(two).was.called_with(sentinel);
+    end)
+    it("silently absorbs errors", function()
+        rejected(sentinel):Fail(function() error("Whoops!") end)
     end)
 end)
 
@@ -431,6 +437,10 @@ describe("Promise:Always", function()
         rejected(sentinel):Always(two);
         assert.spy(two).was.called(1);
         assert.spy(two).was.called_with(sentinel);
+    end)
+    it("silently absorbs errors", function()
+        fulfilled(sentinel):Always(function() error("Whoops!") end)
+        rejected(sentinel):Always(function() error("Whoops!") end)
     end)
 end)
 

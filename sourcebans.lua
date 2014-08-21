@@ -79,6 +79,13 @@ local config = {
     dogroups = false;
     showbanreason = true;
 };
+local dbConfig = {
+    hostname = Hostname;
+    username = Username;
+    password = Password;
+    database = Database;
+    portnumb = Port    ;
+}
 
 local db = database.NewDatabase({
     Hostname = config.hostname;
@@ -690,6 +697,9 @@ function SetConfig( key, value )
         value = tobool( value );
     end
     config[key] = value;
+    if ( dbConfig[key] ) then
+        db:SetConnectionParameter( dbConfig[key], value );
+    end
 end
 
 

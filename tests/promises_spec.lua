@@ -630,4 +630,7 @@ describe("Promise:Error", function()
         promise:Error(cback2, true);
         assert.spy(cback2).was.called(1);
     end)
+    it("silently absorbs errors", function()
+        fulfilled(other):Error(throw_error)
+    end)
 end)

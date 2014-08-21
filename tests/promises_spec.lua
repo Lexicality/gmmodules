@@ -320,7 +320,7 @@ describe("[Extension] Returning a promise from a rejected promise's rejection ca
 end);
 
 describe("Promise:Done", function()
-    it("should not return a new promise", function()
+    it("does not return a new promise", function()
         local p = pending().promise();
         assert.are.equal(p, p:Done(function() end));
     end)
@@ -350,7 +350,7 @@ describe("Promise:Done", function()
 end)
 
 describe("Promise:Fail", function()
-    it("should not return a new promise", function()
+    it("does not return a new promise", function()
         local p = pending().promise();
         assert.are.equal(p, p:Fail(function() end));
     end)
@@ -381,7 +381,7 @@ end)
 
 
 describe("Promise:Always", function()
-    it("should not return a new promise", function()
+    it("does not return a new promise", function()
         local p = pending().promise();
         assert.are.equal(p, p:Always(function() end));
     end)

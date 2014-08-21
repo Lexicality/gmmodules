@@ -462,6 +462,13 @@ describe("Database", function()
 	end)
 
 	describe(":PrepareQuery", function()
+		it("does not require a connected database", function()
+			local query;
+			assert.has_no.errors(function()
+				query = db:PrepareQuery("foo");
+			end);
+			assert.is.not_nil(query);
+		end)
 		it("should error if not given any text", function()
 			db:Connect();
 			assert.has.errors(function() db:PrepareQuery() end);

@@ -188,22 +188,19 @@ local function getAdminDetails( admin )
 end
 local function errCallback( midtext, hascontext )
     local text = string.format( "Unable to %s: %%s", midtext );
+    local function errPrint(err, midformat)
+        if ( midformat ) then
+            notifyerror( string.format( text, midformat, err ) );
+        else
+            notifyerror( string.format( text, err ) );
+        end
+    end
     if ( hascontext ) then
-        return function( _, err, midformat )
-            if ( midformat ) then
-                notifyerror( string.format( text, midformat, err ) );
-            else
-                notifyerror( string.format( text, err ) );
-            end
+        return function( _, ... )
+            return errPrint(...)
         end
     else
-        return function( err, midformat )
-            if ( midformat ) then
-                notifyerror( string.format( text, midformat, err ) );
-            else
-                notifyerror( string.format( text, err ) );
-            end
-        end
+        return errPrint;
     end
 end
 local function handleLegacyCallback( callback, promise )

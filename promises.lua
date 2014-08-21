@@ -10,9 +10,11 @@ local setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHal
 ---
 -- This module is a pure Lua implementation of the CommonJS Promises/A spec, using a basic version of jQuery's interface.
 -- It returns a single function, Deferred.
+-- @module promises
 -- @author Lex Robinson - lexi at lexi dot org dot uk
--- @copyright 2013 Lex Robinson - This code is released under the MIT License
--- @release 1.0<!--
+-- @copyright 2013-2014 Lex Robinson - This code is released under the MIT License
+-- @release 1.1.0
+-- <!--
 --[[ goddamnit luadoc -->
 module('promises');
 ]]

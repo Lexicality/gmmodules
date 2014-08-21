@@ -45,9 +45,10 @@ local _TEST = _TEST;
 -- The Universal Database Module is an attempt to provide a single rational interface
 --  that allows Developers to run SQL commands without caring which MySQL module the server has installed.
 -- It also has client-side prepared queries which is nice.
+-- @module database
 -- @author Lex Robinson - lexi at lexi dot org dot uk
--- @copyright 2012-2013 Lex Robinson - Relased under the MIT License
--- @release Alpha v2
+-- @copyright 2012-2014 Lex Robinson - Relased under the MIT License
+-- @release 1.0.0
 -- @usage see database.NewDatabase
 -- @see NewDatabase
 module( "database" );

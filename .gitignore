@@ -1,6 +1,8 @@
 *.swp
 *.sublime*
 *.html
+*.css
 luacov.stats.out
 luacov_report.txt
+doc/
 html/

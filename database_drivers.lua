@@ -1,3 +1,9 @@
+--[[
+    Drivers for the universal database system
+    Copyright (c) 2014 Lex Robinson
+    This code is freely available under the MIT License
+--]]
+
 local database = require('database');
 local Deferred = require('promises');
 
@@ -16,7 +22,7 @@ local timer, file, system, SERVER, ErrorNoHalt
 
 local _TEST = _TEST;
 
-module('database_drivers');
+local drivers = {};
 
 local function checkmodule( name )
     -- Not in Garry's Mod
@@ -39,7 +45,7 @@ local function checkmodule( name )
 end
 
 if (_TEST) then
-    _checkmodule = checkmodule;
+    drivers._checkmodule = checkmodule;
 end
 
 do -- TMySQL
@@ -104,6 +110,7 @@ do -- TMySQL
     end
 
     database.RegisterDBMethod( "TMySQL", db );
+    drivers.tmysql = db;
 end
 do -- MySQLOO
     local mysqlooyes, mysqloono, mysqlooack, mysqloodata;
@@ -238,6 +245,7 @@ do -- MySQLOO
     end
 
     database.RegisterDBMethod( "MySQLOO", db );
+    drivers.mysqloo = db;
 end
 do -- SQLite
     local db = {};
@@ -278,4 +286,7 @@ do -- SQLite
     end
 
     database.RegisterDBMethod( "SQLite", db );
+    drivers.sqlite = db;
 end
+
+return drivers;

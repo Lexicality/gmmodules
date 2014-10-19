@@ -249,24 +249,55 @@ queries["Look up serverID"]:SetCallbacks( {
     end;
     Fail = errCallback( "lookup the server's ID" );
 });
-queries["Select Admin Groups"]:SetCallbacks( {
+queries["Select Admin Groups"]:SetCallbacks({
     Done = function( data )
         for _, data in pairs( data ) do
             adminGroups[data.name] = data;
             notifymessage( "Loaded admin group ", data.name );
         end
-        local query = database:query( queries["Select Admins"]:format( config.dbprefix,config.dbprefix,config.serverid ) );
-        query.onSuccess = adminLoaderOnSuccess;
-        query.onFailure = adminLoaderOnFailure;
-        query.onData = adminLoaderOnData;
-        query:start();
         notifymessage( "Loading Admins . . ." );
+        queries["Select Admins"]
+            :Prepare( config.dbprefix, config.dbprefix, config.serverid )
+            :Run()
     end;
     Fail = errCallback( "load admin groups" );
 });
+queries["Select Admins"]:SetCallbacks({
+    Done = function()
+        notifymessage( "Finished loading admins!" );
+        for _, ply in pairs( player.GetAll() ) do
+            local info = admins[ply:SteamID()];
+            if ( info ) then
+                if ( config.dogroups ) then
+                    ply:SetUserGroup( string.lower( info.srv_group ) )
+                end
+                ply.sourcebansinfo = info;
+                notifymessage( ply:Name() .. " is now a " .. info.srv_group .. "!" );
+            end
+        end
+    end;
+    Data = function( data )
+        data.srv_group = data.srv_group or "NO GROUP ASSIGNED";
+        data.srv_flags = data.srv_flags or "";
+        local group = adminGroups[data.srv_group];
+        if ( group ) then
+            data.srv_flags = data.srv_flags .. ( group.flags or "" );
+            if ( data.immunity < group.immunity ) then
+                data.immunity = group.immunity;
+            end
+        end
+        if ( string.find( data.srv_flags, 'z' ) ) then
+            data.zflag = true;
+        end
+        admins[data.authid] = data;
+        adminsByID[data.aid] = data;
+        notifymessage( "Loaded admin ", data.user, " with group ", tostring( data.srv_group ), "." );
+    end;
+    Fail = errCallback( "load admins" );
+});
+
 --[[ Query Functions ]]--
-local checkBan
-local loadAdmins, adminLoaderOnSuccess, adminLoaderOnData, adminLoaderOnFailure;
+local checkBan, loadAdmins;
 local doBan, banOnSuccess, banOnFailure;
 local startDatabase, databaseOnConnected, databaseOnFailure;
 local doUnban, unbanOnFailure;
@@ -364,39 +395,6 @@ function doBan( steamID, ip, name, length, reason, admin, callback )
         banid( steamID );
     end
 end
--- Data --
-function adminLoaderOnSuccess( self )
-    notifymessage( "Finished loading admins!" );
-    for _, ply in pairs( player.GetAll() ) do
-        local info = admins[ply:SteamID()];
-        if ( info ) then
-            if ( config.dogroups ) then
-                ply:SetUserGroup( string.lower( info.srv_group ) )
-            end
-            ply.sourcebansinfo = info;
-            notifymessage( ply:Name() .. " is now a " .. info.srv_group .. "!" );
-        end
-    end
-end
-
-function adminLoaderOnData( self, data )
-    data.srv_group = data.srv_group or "NO GROUP ASSIGNED";
-    data.srv_flags = data.srv_flags or "";
-    local group = adminGroups[data.srv_group];
-    if ( group ) then
-        data.srv_flags = data.srv_flags .. ( group.flags or "" );
-        if ( data.immunity < group.immunity ) then
-            data.immunity = group.immunity;
-        end
-    end
-    if ( string.find( data.srv_flags, 'z' ) ) then
-        data.zflag = true;
-    end
-    admins[data.authid] = data;
-    adminsByID[data.aid] = data;
-    notifymessage( "Loaded admin ", data.user, " with group ", tostring( data.srv_group ), "." );
-end
-
 -- Success --
 function banOnSuccess( self )
     self.callback( true );
@@ -436,10 +434,6 @@ local function activeBansDataTransform( results )
 end
 
 -- Failure --
-function adminLoaderOnFailure( self, err )
-    notifyerror( "SQL Error while loading the admins! ", err );
-end
-
 function banOnFailure( self, err )
     notifyerror( "SQL Error while storing ", self.name, "'s ban! ", err );
     self.callback( false, err );

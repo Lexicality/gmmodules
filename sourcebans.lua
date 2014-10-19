@@ -249,9 +249,23 @@ queries["Look up serverID"]:SetCallbacks( {
     end;
     Fail = errCallback( "lookup the server's ID" );
 });
+queries["Select Admin Groups"]:SetCallbacks( {
+    Done = function( data )
+        for _, data in pairs( data ) do
+            adminGroups[data.name] = data;
+            notifymessage( "Loaded admin group ", data.name );
+        end
+        local query = database:query( queries["Select Admins"]:format( config.dbprefix,config.dbprefix,config.serverid ) );
+        query.onSuccess = adminLoaderOnSuccess;
+        query.onFailure = adminLoaderOnFailure;
+        query.onData = adminLoaderOnData;
+        query:start();
+        notifymessage( "Loading Admins . . ." );
+    end;
+    Fail = errCallback( "load admin groups" );
+});
 --[[ Query Functions ]]--
 local checkBan
-local adminGroupLoaderOnSuccess, adminGroupLoaderOnFailure;
 local loadAdmins, adminLoaderOnSuccess, adminLoaderOnData, adminLoaderOnFailure;
 local doBan, banOnSuccess, banOnFailure;
 local startDatabase, databaseOnConnected, databaseOnFailure;
@@ -270,15 +284,18 @@ function checkBan( ply )-- steamID, ip, name )
 end
 
 function loadAdmins()
-    if not isActive() then return end
+    if ( not isActive() ) then
+        error( "Not activated yet!", 2 );
+    end
+
     admins = {};
     adminGroups = {};
     adminsByID = {};
-    local query = database:query( queries["Select Admin Groups"]:format( config.dbprefix ) );
-    query.onFailure = adminGroupLoaderOnFailure;
-    query.onSuccess = adminGroupLoaderOnSuccess;
-    query:start();
+
     notifymessage( "Loading Admin Groups . . ." );
+    return queries["Select Admin Groups"]
+        :Prepare( config.dbprefix )
+        :Run();
 end
 
 function startDatabase( deferred )
@@ -381,20 +398,6 @@ function adminLoaderOnData( self, data )
 end
 
 -- Success --
-function adminGroupLoaderOnSuccess( self )
-    local data = self:getData();
-    for _, data in pairs( data ) do
-        adminGroups[data.name] = data;
-        notifymessage( "Loaded admin group ", data.name );
-    end
-    local query = database:query( queries["Select Admins"]:format( config.dbprefix,config.dbprefix,config.serverid ) );
-    query.onSuccess = adminLoaderOnSuccess;
-    query.onFailure = adminLoaderOnFailure;
-    query.onData = adminLoaderOnData;
-    query:start();
-    notifymessage( "Loading Admins . . ." );
-end
-
 function banOnSuccess( self )
     self.callback( true );
 end
@@ -433,11 +436,6 @@ local function activeBansDataTransform( results )
 end
 
 -- Failure --
-
-function adminGroupLoaderOnFailure( self, err )
-    notifyerror( "SQL Error while loading the admin groups! ", err );
-end
-
 function adminLoaderOnFailure( self, err )
     notifyerror( "SQL Error while loading the admins! ", err );
 end

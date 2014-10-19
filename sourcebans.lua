@@ -288,11 +288,11 @@ function startDatabase( deferred )
             return deferred:Resolve();
         end
     end
-    local deferred = deferred or Deferred();
+    deferred = deferred or Deferred();
     local cb = errCallback( "activate Sourcebans" );
     db:Connect()
+        :Fail( cb )
         :Fail( function( errmsg )
-            cb( errmsg );
             notifymessage( "Setting a reconnection timer for 60 seconds!" );
             timer.Simple( 60, function() startDatabase( deferred ); end );
         end )
@@ -303,13 +303,13 @@ function startDatabase( deferred )
                     :Run();
             end
         end )
-        :Then( function()
+        :Done( function()
             deferred:Resolve();
             for _, ply in pairs( player.GetAll() ) do
                 checkBan( ply );
             end
         end)
-        :Then( loadAdmins );
+        :Done( loadAdmins );
     return deferred:Promise();
 end
 

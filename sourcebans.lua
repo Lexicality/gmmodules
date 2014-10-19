@@ -235,10 +235,10 @@ queries["Check for Bans by SteamID"]:SetCallbacks( {
     Fail = errCallback( "check %s's ban status" );
 } );
 queries["Get All Active Bans"]:SetCallbacks( {
-    Fail = errCallback( "aquire every ban ever" );
+    Fail = errCallback( "acquire every ban ever" );
 } );
 queries["Get Active Bans"]:SetCallbacks( {
-    Fail = errCallback( "aquire page #%d of bans" );
+    Fail = errCallback( "acquire page #%d of bans" );
 } );
 queries["Log Join Attempt"]:SetCallbacks( {
     Fail = errCallback( "store %s's foiled join attempt" );

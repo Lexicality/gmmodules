@@ -208,6 +208,13 @@ local function handleLegacyCallback( callback, promise )
         :Done( function( result ) callback(true,  result); end )
         :Fail( function( errmsg ) callback(false, errmsg); end );
 end
+local function doAnError( callback, reason )
+    local promise = Deferred():Reject(reason):Promise();
+    if (callback) then
+        handleLegacyCallback( callback, promise );
+    end
+    return promise;
+end
 local function isActive()
     return db:IsConnected();
 end
@@ -295,10 +302,12 @@ queries["Select Admins"]:SetCallbacks({
     end;
     Fail = errCallback( "load admins" );
 });
+queries["Ban Player"]:SetCallbacks( {
+    Fail = errCallback( "Ban %s" );
+} );
 
 --[[ Query Functions ]]--
-local checkBan, loadAdmins;
-local doBan, banOnSuccess, banOnFailure;
+local checkBan, loadAdmins, doBan;
 local startDatabase, databaseOnConnected, databaseOnFailure;
 local doUnban, unbanOnFailure;
 
@@ -369,16 +378,16 @@ function doUnban( query, id, reason, admin )
     query:start();
 end
 
-function doBan( steamID, ip, name, length, reason, admin, callback )
+function doBan( steamID, ip, name, length, reason, admin )
     local time = os.time();
     local adminID, adminIP = getAdminDetails( admin );
     name = name or "";
-    local query = database:query( queries["Ban Player"]:format( config.dbprefix, ip, steamID, database:escape( name), time, time + length, length, database:escape(reason ), adminID, adminIP, config.serverid ) );
-    query.onSuccess = banOnSuccess;
-    query.onFailure = banOnFailure;
-    query.callback = callback;
-    query.name = name;
-    query:start();
+
+    local promise = queries["Ban Player"]
+        :Prepare( config.dbprefix, ip, steamID, name, time, time + length, length, reason, adminID, adminIP, config.serverid )
+        :SetCallbackArgs( name )
+        :Run();
+
     if ( config.showbanreason ) then
         if ( reason and string.Trim( reason ) == "" ) then
             reason = nil;
@@ -394,12 +403,10 @@ function doBan( steamID, ip, name, length, reason, admin, callback )
         kickid( steamID, reason );
         banid( steamID );
     end
+
+    return promise;
 end
 -- Success --
-function banOnSuccess( self )
-    self.callback( true );
-end
-
 local function activeBansDataTransform( results )
     local ret = {}
     local adminName, adminID;
@@ -434,16 +441,6 @@ local function activeBansDataTransform( results )
 end
 
 -- Failure --
-function banOnFailure( self, err )
-    notifyerror( "SQL Error while storing ", self.name, "'s ban! ", err );
-    self.callback( false, err );
-end
-
-function activeBansOnFailure( self, err )
-    notifyerror( "SQL Error while loading all active bans! ", err );
-    self.callback( false, err );
-end
-
 function unbanOnFailure( self, err )
     notifyerror( "SQL Error while removing the ban for ", self.id, "! ", err );
 end
@@ -514,11 +511,15 @@ end
 function BanPlayer( ply, time, reason, admin, callback )
     callback = callback or blankCallback;
     if ( not isActive() ) then
-        return callback( false, "No Database Connection" );
+        return doAnError( callback, "No Database Connection" );
     elseif ( not ply:IsValid() ) then
         error( "Expected player, got NULL!", 2 );
     end
-    doBan( ply:SteamID( ), getIP( ply ), ply:Name( ), time, reason, admin, callback );
+    local promise = doBan( ply:SteamID( ), getIP( ply ), ply:Name( ), time, reason, admin );
+    if ( callback ) then
+        handleLegacyCallback(callback, promise);
+    end
+    return promise;
 end
 
 ---
@@ -532,14 +533,18 @@ end
 function BanPlayerBySteamID( steamID, time, reason, admin, name, callback )
     callback = callback or blankCallback;
     if ( not isActive() ) then
-        return callback( false, "No Database Connection" );
+        return doAnError( callback, "No Database Connection" );
     end
     for _, ply in pairs( player.GetAll() ) do
         if ( ply:SteamID() == steamID ) then
             return BanPlayer( ply, time, reason, admin, callback );
         end
     end
-    doBan( steamID, '', name, time, reason, admin, callback )
+    local promise = doBan( steamID, '', name, time, reason, admin );
+    if ( callback ) then
+        handleLegacyCallback(callback, promise);
+    end
+    return promise;
 end
 
 ---
@@ -553,15 +558,19 @@ end
 function BanPlayerByIP( ip, time, reason, admin, name, callback )
     callback = callback or blankCallback;
     if ( not isActive() ) then
-        return callback( false, "No Database Connection" );
+        return doAnError( callback, "No Database Connection" );
     end
     for _, ply in pairs( player.GetAll() ) do
         if ( getIP( ply ) == ip ) then
             return BanPlayer( ply, time, reason, admin, callback );
         end
     end
-    doBan( '', cleanIP( ip ), name, time, reason, admin, callback );
+    local promise = doBan( '', cleanIP( ip ), name, time, reason, admin );
+    if ( callback ) then
+        handleLegacyCallback(callback, promise);
+    end
     game.ConsoleCommand( "addip 5 " .. ip .. "\n" );
+    return promise;
 end
 
 ---
@@ -576,9 +585,13 @@ end
 function BanPlayerBySteamIDAndIP( steamID, ip, time, reason, admin, name, callback )
     callback = callback or blankCallback;
     if ( not isActive() ) then
-        return callback( false, "No Database Connection" );
+        return doAnError( callback, "No Database Connection" );
     end
-    doBan( steamID, cleanIP( ip ), name, time, reason, admin, callback );
+    local promise = doBan( steamID, cleanIP( ip ), name, time, reason, admin );
+    if ( callback ) then
+        handleLegacyCallback(callback, promise);
+    end
+    return promise;
 end
 
 

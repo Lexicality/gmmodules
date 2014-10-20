@@ -305,11 +305,15 @@ queries["Select Admins"]:SetCallbacks({
 queries["Ban Player"]:SetCallbacks( {
     Fail = errCallback( "Ban %s" );
 } );
+queries["Unban SteamID"]:SetCallbacks({
+    Fail = errCallback( "Unban SteamID %s" );
+});
+queries["Unban IPAddress"]:SetCallbacks({
+    Fail = errCallback( "Unban IP %s" );
+});
 
 --[[ Query Functions ]]--
-local checkBan, loadAdmins, doBan;
-local startDatabase, databaseOnConnected, databaseOnFailure;
-local doUnban, unbanOnFailure;
+local startDatabase, checkBan, loadAdmins, doBan, doUnban;
 
 -- Functions --
 --
@@ -372,10 +376,10 @@ end
 
 function doUnban( query, id, reason, admin )
     local aid = getAdminDetails( admin )
-    query = database:query( query:format( config.dbprefix, aid, database:escape( reason ), id ) );
-    query.onFailure = unbanOnFailure;
-    query.id = id;
-    query:start();
+    return query
+        :Prepare( config.dbprefix, aid, database:escape( reason ), id )
+        :SetCallbackArgs( id )
+        :Run();
 end
 
 function doBan( steamID, ip, name, length, reason, admin )
@@ -406,7 +410,7 @@ function doBan( steamID, ip, name, length, reason, admin )
 
     return promise;
 end
--- Success --
+
 local function activeBansDataTransform( results )
     local ret = {}
     local adminName, adminID;
@@ -438,11 +442,6 @@ local function activeBansDataTransform( results )
         }
     end
     return ret;
-end
-
--- Failure --
-function unbanOnFailure( self, err )
-    notifyerror( "SQL Error while removing the ban for ", self.id, "! ", err );
 end
 
 --[[ Hooks ]]--
@@ -602,10 +601,10 @@ end
 -- @param admin ( Optional ) The admin who did the unban. Leave nil for CONSOLE.
 function UnbanPlayerBySteamID( steamID, reason, admin )
     if ( not isActive() ) then
-        return false, "No Database Connection";
+        return doAnError( nil, "No Database Connection" );
     end
-    doUnban( queries["Unban SteamID"], steamID, reason, admin );
     game.ConsoleCommand( "removeid " .. steamID .. "\n" );
+    return doUnban( queries["Unban SteamID"], steamID, reason, admin );
 end
 
 ---
@@ -615,10 +614,10 @@ end
 -- @param admin ( Optional ) The admin who did the unban. Leave nil for CONSOLE.
 function UnbanPlayerByIPAddress( ip, reason, admin )
     if ( not isActive() ) then
-        return false, "No Database Connection";
+        return doAnError( nil, "No Database Connection" );
     end
-    doUnban( queries["Unban IPAddress"], ip, reason, admin );
     game.ConsoleCommand( "removeip " .. ip .. "\n" );
+    return doUnban( queries["Unban IPAddress"], ip, reason, admin );
 end
 
 ---

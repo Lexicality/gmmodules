@@ -6,26 +6,26 @@ require( "tmysql4" )
 	tmysql.escape( str ) - Escape a possible unsafe string that can be used to query
 	tmysql.GetTable() - Returns a table of all current database connections
 	tmysql.PollAll() - Polls all active queries on all connections and calls their callbacks on completion
-	
+
 	-- There's really no need for these, but was from the original tmysql
 	QUERY_SUCCESS = true
 	QUERY_FAIL = false
-	
+
 	QUERY_FLAG_ASSOC = 1 -- Makes the result table use the colum names instead of numerical indices
 	QUERY_FLAG_LASTID = 2 -- ?? Honestly don't know
-	
+
 	MYSQL_VERSION = current version of the mysql lib
 	MYSQL_INFO = random mysql version info
 ]]
 
 --[[
 	Database:Query( String, function onComplete, return flags, random object to be used in callback )
-	function onComplete( [Object random object from query thing], Table result, Bool status, String error )	
+	function onComplete( [Object random object from query thing], Table result, Bool status, String error )
 	Database:Disconnect() - Close the current database connection and finish any pending queries
 	Database:SetCharset( String character set )
 	Database:Poll() - Polls all active queries and calls their callbacks on completion
 --]]
-	
+
 	local function onPlayerCompleted( ply, results, status, error )
 		-- if status == true, the error will be the mysql_last_id if doing an insert into an AUTO INCREMENT'd table
 		print( "Query for player completed", ply )
@@ -35,9 +35,9 @@ require( "tmysql4" )
 			ErrorNoHalt( error )
 		end
 	end
-	
+
 	Database:Query( "select * from some_table", onPlayerCompleted, QUERY_FLAG_ASSOC, Player(1) )
-	
+
 	local function onCompleted( results, status, error )
 		-- if status == true, the error will be the mysql_last_id if doing an insert into an AUTO INCREMENT'd table
 		print( "Query for completed" )
@@ -47,13 +47,13 @@ require( "tmysql4" )
 			ErrorNoHalt( error )
 		end
 	end
-	
+
 	Database:Query( "select * from some_table", onCompleted, QUERY_FLAG_ASSOC )
-	
+
 	function GM:OurMySQLCallback( results, status, error )
 		print( result, status, error )
 	end
-	
+
 	Database:Query( "select * from some_table", GAMEMODE.OurMySQLCallback, QUERY_FLAG_ASSOC, GAMEMODE ) -- Call the gamemode function
 
 DB_DM, err = tmysql.initialize( HOSTNAME, USERNAME, PASSWORD, DATABASE, PORT, OPTIONAL_UNIX_SOCKET_PATH )

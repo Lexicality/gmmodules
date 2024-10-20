@@ -20,34 +20,37 @@ local setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHal
 	  setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHalt or print;
 
 ---
--- This module is a pure Lua implementation of the CommonJS Promises/A spec, using a basic version of jQuery's interface.
--- It returns a single function, Deferred.
+--- This module is a pure Lua implementation of the CommonJS Promises/A spec, using a basic version of jQuery's interface.
+--- It returns a single function, Deferred.
+--- @author Lexi Robinson - lexi at lexi dot org dot uk
+--- @copyright 2013 Lexi Robinson - This code is released under the LGPLv3 License
+--- @release 1.1.0
 -- @module promises
--- @author Lexi Robinson - lexi at lexi dot org dot uk
--- @copyright 2013 Lexi Robinson - Relased under the LGPLv3 License
--- @release 1.1.0
 -- <!--
 --[[ goddamnit luadoc -->
 module('promises');
 ]]
+
+--- @class Deferred
 local Deferred = nil;
 
---
--- Does a basic form of OO
--- @param tab The metatable to make an object from
--- @param ... Stuff to pass to the ctor
--- @return ye new object
+---
+--- Does a basic form of OO
+--- @param tab table The metatable to make an object from
+--- @param ... any Stuff to pass to the ctor
+--- @return any #ye new object
 local function new( tab, ... )
 	local ret = setmetatable( {}, {__index=tab} );
 	ret:_init( ... );
 	return ret;
 end
 
---
--- Binds a function's self var
--- @param func The function what needen ze selfen
--- @param self The selfen as above
--- @return function( ... ) return func( self, ... ) end
+---
+--- Binds a function's self var
+--- @param func function The function what needen ze selfen
+--- @param self any The selfen as above
+--- @return function # function( ... ) return func( self, ... ) end
+--- @overload fun(func: nil, self: any): nil
 local function bind( func, self )
 	if ( not func ) then
 		return;
@@ -58,10 +61,11 @@ local function bind( func, self )
 	end
 end
 
---
--- Creates a "safe" function that will never error
--- @param func 1x potentially unsafe function
--- @return 1x completely harmless function.
+---
+--- Creates a "safe" function that will never error
+--- @generic T : function
+--- @param func `T`  1x potentially unsafe function
+--- @return T #1x completely harmless function.
 local function pbind( func )
 	return function( ... )
 		local r, e = pcall( func, ... );
@@ -71,25 +75,38 @@ local function pbind( func )
 	end
 end
 
+--- @alias ThenCallback fun(...: any): any
+--- @
 ---
--- The 'clientside' promise object suitable for hookage.
--- Note that any handlers added after the promise has been resolved or rejected will be called ( if relevent ) before the handle function returns.
--- @name Promise
--- @class table
+--- The 'clientside' promise object suitable for hookage.
+--- Note that any handlers added after the promise has been resolved or rejected will be called ( if relevent ) before the handle function returns.
+--- @class Promise
+--- @field protected _IsPromise boolean
+--- @field protected _state "pending" | "done" | "fail"
+--- @field protected _errd boolean
+--- @field protected _progd any[][] | nil
+--- @field protected _res any[]
+--- @field protected _dones ThenCallback[]
+--- @field protected _fails ThenCallback[]
+--- @field protected _progs ThenCallback[]
+--- @field protected _alwys ThenCallback[]
+--- @field protected _errs ThenCallback[]
 local Promise = {
 	_IsPromise = true;
 }
+
+
 ---
--- CommonJS Promises/A compliant Then function. <br />
--- Adds handlers that get called when the Promise object is resolved, rejected, or progressing.
--- All arguments are optional and non-function values are ignored. <br />
--- If done or fail returns a value, the returned promise is resolved with that value.
--- If they cause an error, the returned promise is rejected with the error.
--- If they return a Promise object, any action taken on that promise object will be forwarded to the returned promise object.
--- @param done An optional function that is called when the Promise is resolved.
--- @param fail An optional function that is called when the Promise is rejected.
--- @param prog An optional function that is called when progress notifications are sent to the Promise.
--- @return A new promise object that will be resolved, rejected or notified when this one is - after the values have been filtered through the above functions.
+--- CommonJS Promises/A compliant Then function. <br />
+--- Adds handlers that get called when the Promise object is resolved, rejected, or progressing.
+--- All arguments are optional and non-function values are ignored. <br />
+--- If done or fail returns a value, the returned promise is resolved with that value.
+--- If they cause an error, the returned promise is rejected with the error.
+--- If they return a Promise object, any action taken on that promise object will be forwarded to the returned promise object.
+--- @param done ThenCallback An optional function that is called when the Promise is resolved.
+--- @param fail ThenCallback An optional function that is called when the Promise is rejected.
+--- @param prog ThenCallback An optional function that is called when progress notifications are sent to the Promise.
+--- @return Promise A new promise object that will be resolved, rejected or notified when this one is - after the values have been filtered through the above functions.
 function Promise:Then( done, fail, prog )
 	local def = new(Deferred);
 	if ( type( done ) == 'function' ) then
@@ -158,9 +175,9 @@ function Promise:Then( done, fail, prog )
 end
 
 ---
--- Adds a handler to be called when the Promise object is resolved
--- @param done The handler function
--- @return self
+--- Adds a handler to be called when the Promise object is resolved
+--- @param done ThenCallback The handler function
+--- @return self
 function Promise:Done( done, _ )
 	if ( not _ ) then
 		done = pbind( done );
@@ -174,9 +191,9 @@ function Promise:Done( done, _ )
 end;
 
 ---
--- Adds a handler to be called when the Promise object is rejected
--- @param fail The handler function
--- @return self
+--- Adds a handler to be called when the Promise object is rejected
+--- @param fail ThenCallback The handler function
+--- @return self
 function Promise:Fail( fail, _ )
 	if ( not _ ) then
 		fail = pbind( fail );
@@ -190,9 +207,9 @@ function Promise:Fail( fail, _ )
 end;
 
 ---
--- Adds a handler to be called when the Promise object is notified of a progress event
--- @param prog The handler function
--- @return self
+--- Adds a handler to be called when the Promise object is notified of a progress event
+--- @param prog ThenCallback The handler function
+--- @return self
 function Promise:Progress( prog, _ )
 	if ( not _ ) then
 		prog = pbind( prog );
@@ -207,9 +224,9 @@ function Promise:Progress( prog, _ )
 end;
 
 ---
--- Adds a handler to be called when the Promise object is rejected due to an error
--- @param err The handler function
--- @return self
+--- Adds a handler to be called when the Promise object is rejected due to an error
+--- @param err ThenCallback The handler function
+--- @return self
 function Promise:Error( err, _ )
 	if ( not _ ) then
 		err = pbind( err );
@@ -225,9 +242,9 @@ function Promise:Error( err, _ )
 end
 
 ---
--- Adds a handler that gets called when the promise is either resolved or rejected
--- @param alwy The handler function
--- @return self
+--- Adds a handler that gets called when the promise is either resolved or rejected
+--- @param alwy ThenCallback The handler function
+--- @return self
 function Promise:Always( alwy, _ )
 	if ( not _ ) then
 		alwy = pbind( alwy );
@@ -240,9 +257,9 @@ function Promise:Always( alwy, _ )
 	return self;
 end;
 
---
--- ctor
--- @see Deferred:Promise
+---
+--- ctor
+--- @see Deferred:Promise
 function Promise:_init()
 	self._state = 'pending';
 	self._errd = false;
@@ -254,10 +271,11 @@ function Promise:_init()
 end;
 
 ---
--- The 'serverside' deferred object w/ the mutation functions.
--- Also implements all the promise functions because why not
--- @name Deferred
--- @class table
+--- The 'serverside' deferred object w/ the mutation functions.
+--- Also implements all the promise functions because why not
+--- @class Deferred: Promise
+--- @field private _promise Promise
+--- @field private _IsDeferred boolean
 Deferred = {
 	_IsDeferred = true;
 	-- Proxies
@@ -270,10 +288,10 @@ Deferred = {
 };
 
 ---
--- Resolves the Deferred object.
--- Note that it is an error to attempt to mutate a Deferred's state after is is resolved or rejected.
--- @param ... The params to pass to the handlers
--- @return self
+--- Resolves the Deferred object.
+--- Note that it is an error to attempt to mutate a Deferred's state after is is resolved or rejected.
+--- @param ... any The params to pass to the handlers
+--- @return self
 function Deferred:Resolve( ... )
 	local p = self._promise;
 	if ( p._state ~= 'pending' ) then
@@ -291,10 +309,10 @@ function Deferred:Resolve( ... )
 end;
 
 ---
--- Rejects the Deferred object.
--- Note that it is an error to attempt to mutate a Deferred's state after is is resolved or rejected.
--- @param ... The params to pass to the handlers
--- @return self
+--- Rejects the Deferred object.
+--- Note that it is an error to attempt to mutate a Deferred's state after is is resolved or rejected.
+--- @param ... any The params to pass to the handlers
+--- @return self
 function Deferred:Reject( ... )
 	local p = self._promise;
 	if ( p._state ~= 'pending' ) then
@@ -317,10 +335,10 @@ function Deferred:Reject( ... )
 end;
 
 ---
--- Notifies the Deferred object of a progress update.
--- Note that it is an error to attempt to notify a resolved or rejected Deferred.
--- @param ... The params to pass to the handlers
--- @return self
+--- Notifies the Deferred object of a progress update.
+--- Note that it is an error to attempt to notify a resolved or rejected Deferred.
+--- @param ... any The params to pass to the handlers
+--- @return self
 function Deferred:Notify( ... )
 	local p = self._promise;
 	if ( p._state ~= 'pending' ) then
@@ -335,25 +353,24 @@ function Deferred:Notify( ... )
 end;
 
 ---
--- Returns the non-mutatable Promise for this Deferred object
--- @return a Promise object
--- @see Promise
+--- Returns the non-mutatable Promise for this Deferred object
+--- @return Promise a Promise object
+--- @see Promise
 function Deferred:Promise()
 	return self._promise;
 end;
 
---
--- ctor
--- @see Deferred
+---
+--- ctor
+--- @see Deferred
 function Deferred:_init()
 	self._promise = new( Promise );
 end;
 
 
 ---
--- Creates and returns a new deferred object
--- @name Deferred
--- @class function
+--- Creates and returns a new deferred object
+--- @return Deferred
 return function()
 	return new( Deferred );
 end

@@ -1,7 +1,6 @@
 return {
 	default = {
-		ROOT = "tests";
-		root = "tests";
+		ROOT = {"tests"};
 		lpath = "./?.lua";
 		coverage = true;
 	}

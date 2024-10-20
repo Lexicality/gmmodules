@@ -27,7 +27,7 @@ local drivers = require "database_drivers";
 local Deferred = require 'promises';
 
 local mockDB = {
-	["Connect"] = function()
+	["Connect"] = function(self)
 		return Deferred():Resolve(self):Promise();
 	end;
 	["Disconnect"] = function() end;

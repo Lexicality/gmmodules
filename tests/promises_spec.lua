@@ -91,7 +91,7 @@ describe("[Promises/A] Basic characteristics of `then`", function ()
         end);
 
         it("calls the rejection callback", function ()
-            rejected(sentinel):Then(null, function (reason)
+            rejected(sentinel):Then(nil, function (reason)
                 assert.are.equal(reason, sentinel);
             end);
         end);
@@ -125,7 +125,7 @@ describe("[Promises/A] State transitions", function ()
 
     it("cannot reject twice", function ()
         local tuple = pending();
-        tuple.promise():Then(null, function (reason)
+        tuple.promise():Then(nil, function (reason)
             assert.are.equal(reason, sentinel);
         end);
 
@@ -149,7 +149,7 @@ describe("[Promises/A] State transitions", function ()
 
     it("cannot reject then fulfill", function ()
         local tuple = pending();
-        tuple.promise():Then(null, function (reason)
+        tuple.promise():Then(nil, function (reason)
             assert.are.equal(reason, sentinel);
         end);
 
@@ -176,7 +176,7 @@ describe("[Promises/A] Chaining off of a fulfilled promise", function ()
         it("should call the second rejection callback with that error as the reason", function (done)
             fulfilled(other):Then(function ()
                 error( sentinel );
-            end):Then(null, function (reason)
+            end):Then(nil, function (reason)
                 assert.are.equal(reason, sentinel);
             end);
         end);
@@ -184,7 +184,7 @@ describe("[Promises/A] Chaining off of a fulfilled promise", function ()
 
     describe("with only a rejection callback", function ()
         it("should call the second fulfillment callback with the original value", function (done)
-            fulfilled(sentinel):Then(null, function ()
+            fulfilled(sentinel):Then(nil, function ()
                 return other;
             end):Then(function (value)
                 assert.are.equal(value, sentinel);
@@ -196,7 +196,7 @@ end);
 describe("[Promises/A] Chaining off of a rejected promise", function ()
     describe("when the first rejection callback returns a new value", function ()
         it("should call the second fulfillment callback with that new value", function (done)
-            rejected(other):Then(null, function ()
+            rejected(other):Then(nil, function ()
                 return sentinel;
             end):Then(function (value)
                 assert.are.equal(value, sentinel);
@@ -206,9 +206,9 @@ describe("[Promises/A] Chaining off of a rejected promise", function ()
 
     describe("when the first rejection callback throws a new reason", function ()
         it("should call the second rejection callback with that new reason", function (done)
-            rejected(other):Then(null, function ()
+            rejected(other):Then(nil, function ()
                 error( sentinel );
-            end):Then(null, function (reason)
+            end):Then(nil, function (reason)
                 assert.are.equal(reason, sentinel);
             end);
         end);
@@ -218,7 +218,7 @@ describe("[Promises/A] Chaining off of a rejected promise", function ()
         it("should call the second rejection callback with the original reason", function (done)
             rejected(sentinel):Then(function ()
                 return other;
-            end):Then(null, function (reason)
+            end):Then(nil, function (reason)
                 assert.are.equal(reason, sentinel);
             end);
         end);
@@ -283,7 +283,7 @@ describe("[Promises/A] Multiple handlers", function ()
             promise:Then(fulfillment, handler2);
             promise:Then(fulfillment, handler3);
 
-            promise:Then(null, function (value)
+            promise:Then(nil, function (value)
                 assert.are.equal(value, sentinel);
 
                 assert.spy(handler1).was.called_with(sentinel);
@@ -310,7 +310,7 @@ describe("[Extension] Returning a promise from a fulfilled promise's fulfillment
         it("should call the second rejection callback with the reason", function ()
             fulfilled(other):Then(function ()
                 return rejected(sentinel);
-            end):Then(null, function (reason)
+            end):Then(nil, function (reason)
                 assert.strictEqual(reason, sentinel);
             end);
         end);
@@ -320,7 +320,7 @@ end);
 describe("[Extension] Returning a promise from a rejected promise's rejection callback", function ()
     describe("when the returned promise is fulfilled", function ()
         it("should call the second fulfillment callback with the value", function ()
-            rejected(other):Then(null, function ()
+            rejected(other):Then(nil, function ()
                 return fulfilled(sentinel);
             end):Then(function (value)
                 assert.strictEqual(value, sentinel);
@@ -330,9 +330,9 @@ describe("[Extension] Returning a promise from a rejected promise's rejection ca
 
     describe("when the returned promise is rejected", function ()
         it("should call the second rejection callback with the reason", function ()
-            rejected(other):Then(null, function ()
+            rejected(other):Then(nil, function ()
                 return rejected(sentinel);
-            end):Then(null, function (reason)
+            end):Then(nil, function (reason)
                 assert.strictEqual(reason, sentinel);
             end);
         end);

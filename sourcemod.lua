@@ -50,8 +50,8 @@ local table, os, string, player, concommand
 local tonumber, pairs, Msg, ServerLog
 	= tonumber, pairs, Msg, ServerLog
 
-local HUD_PRINTCONSOLE, HUD_PRINTCHAT, HUD_PRINTCENTER
-	= HUD_PRINTCONSOLE, HUD_PRINTCHAT, HUD_PRINTCENTER
+local HUD_PRINTCONSOLE, HUD_PRINTTALK, HUD_PRINTCENTER
+	= HUD_PRINTCONSOLE, HUD_PRINTTALK, HUD_PRINTCENTER
 
 local function notifymessage( ... )
 	local words = table.concat( { "[" , os.date() , "][sourcemod.lua] " , ... }, "" ) .. "\n";
@@ -172,8 +172,8 @@ concommand.Add( "sm_psay", function(ply, _, args )
 	end
 	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE";
 	local name2 = pl:Name();
-	complain( ply, "( Private: " .. name2 .. " ) " .. name1 .. ": " .. words, HUD_PRINTCHAT );
-	complain( pl,  "( Private: " .. name2 .. " ) " .. name1 .. ": " .. words, HUD_PRINTCHAT );
+	complain( ply, "( Private: " .. name2 .. " ) " .. name1 .. ": " .. words, HUD_PRINTTALK );
+	complain( pl,  "( Private: " .. name2 .. " ) " .. name1 .. ": " .. words, HUD_PRINTTALK );
 	notifymessage( name1, " triggered sm_psay to ", name2, " ( text ", words, " )" );
 end, nil, "Sends a private message to a player" .. usage);
 
@@ -191,7 +191,7 @@ concommand.Add( "sm_say", function(ply, _, args )
 	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE";
 	for _, pl in pairs( player.GetAll() ) do
 		if ( pl:IsValid( ) and not pl:IsBot( ) ) then
-			complain( pl, name1 .. ": " .. words, HUD_PRINTCHAT );
+			complain( pl, name1 .. ": " .. words, HUD_PRINTTALK );
 		end
 	end
 	notifymessage( name1, " triggered sm_say ( text ", words, " )" );
@@ -231,7 +231,7 @@ concommand.Add( "sm_chat", function(ply, _, args )
 	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE";
 	for _, pl in pairs( player.GetAll() ) do
 		if ( pl:IsValid( ) and pl:IsAdmin( ) ) then
-			complain( pl, "( ADMINS ) " .. name1 .. ": " .. words, HUD_PRINTCHAT );
+			complain( pl, "( ADMINS ) " .. name1 .. ": " .. words, HUD_PRINTTALK );
 		end
 	end
 	notifymessage( name1, " triggered sm_chat ( text ", words, " )" );

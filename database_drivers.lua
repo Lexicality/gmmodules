@@ -26,8 +26,8 @@ local mysqloo  = mysqloo;
 local tmysql   = tmysql;
 
 -- Lua tings
-local ipairs, paris, string, require
-	= ipairs, paris, string, require
+local ipairs, pairs, string, require
+	= ipairs, pairs, string, require
 -- GLua tings
 local timer, file, system, SERVER, ErrorNoHalt
 	= timer, file, system, SERVER, ErrorNoHalt or print

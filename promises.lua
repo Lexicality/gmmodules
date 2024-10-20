@@ -81,16 +81,16 @@ end
 --- The 'clientside' promise object suitable for hookage.
 --- Note that any handlers added after the promise has been resolved or rejected will be called ( if relevent ) before the handle function returns.
 --- @class Promise
---- @field protected _IsPromise boolean
---- @field protected _state "pending" | "done" | "fail"
---- @field protected _errd boolean
---- @field protected _progd any[][] | nil
---- @field protected _res any[]
---- @field protected _dones ThenCallback[]
---- @field protected _fails ThenCallback[]
---- @field protected _progs ThenCallback[]
---- @field protected _alwys ThenCallback[]
---- @field protected _errs ThenCallback[]
+--- @field package _IsPromise boolean
+--- @field package _state "pending" | "done" | "fail"
+--- @field package _errd boolean
+--- @field package _progd any[][] | nil
+--- @field package _res any[]
+--- @field package _dones ThenCallback[]
+--- @field package _fails ThenCallback[]
+--- @field package _progs ThenCallback[]
+--- @field package _alwys ThenCallback[]
+--- @field package _errs ThenCallback[]
 local Promise = {
 	_IsPromise = true;
 }
@@ -103,11 +103,12 @@ local Promise = {
 --- If done or fail returns a value, the returned promise is resolved with that value.
 --- If they cause an error, the returned promise is rejected with the error.
 --- If they return a Promise object, any action taken on that promise object will be forwarded to the returned promise object.
---- @param done ThenCallback An optional function that is called when the Promise is resolved.
---- @param fail ThenCallback An optional function that is called when the Promise is rejected.
---- @param prog ThenCallback An optional function that is called when progress notifications are sent to the Promise.
+--- @param done? ThenCallback An optional function that is called when the Promise is resolved.
+--- @param fail? ThenCallback An optional function that is called when the Promise is rejected.
+--- @param prog? ThenCallback An optional function that is called when progress notifications are sent to the Promise.
 --- @return Promise A new promise object that will be resolved, rejected or notified when this one is - after the values have been filtered through the above functions.
 function Promise:Then( done, fail, prog )
+	--- @type Deferred
 	local def = new(Deferred);
 	if ( type( done ) == 'function' ) then
 		local d = done;
@@ -128,7 +129,7 @@ function Promise:Then( done, fail, prog )
 			end
 		end
 	else
-		done = bind( def.Resolve, def );
+		done = function(...) return def:Resolve(...) end
 	end
 	if ( type( fail ) == 'function' ) then
 		local f = fail;
@@ -149,7 +150,7 @@ function Promise:Then( done, fail, prog )
 			end
 		end
 	else
-		fail = bind( def.Reject, def );
+		fail = function(...) return def:Reject(...) end;
 	end
 	-- Promises/A barely mentions progress handlers, so I've just made this up.
 	if ( type( prog ) == 'function' ) then
@@ -165,7 +166,7 @@ function Promise:Then( done, fail, prog )
 			end
 		end
 	else
-		prog = bind( def.Notify, def );
+		prog = function(...) return def:Notify(...) end;
 	end
 	-- Run progress first so any progs happen before the resolution
 	self:Progress( prog, true );
@@ -274,18 +275,18 @@ end;
 --- The 'serverside' deferred object w/ the mutation functions.
 --- Also implements all the promise functions because why not
 --- @class Deferred: Promise
---- @field private _promise Promise
---- @field private _IsDeferred boolean
+--- @field package _promise Promise
+--- @field package _IsDeferred boolean
 Deferred = {
 	_IsDeferred = true;
-	-- Proxies
 	_IsPromise = true;
-	Then = function( self, ... ) return self._promise:Then( ... ); end;
-	Done = function( self, ... ) self._promise:Done( ... ); return self; end;
-	Fail = function( self, ... ) self._promise:Fail( ... ); return self; end;
-	Progress = function( self, ... ) self._promise:Progress( ... ); return self; end;
-	Always = function( self, ... ) self._promise:Always( ... ); return self; end;
 };
+-- Proxies
+Deferred.Then = function( self, ... ) return self._promise:Then( ... ); end;
+Deferred.Done = function( self, ... ) self._promise:Done( ... ); return self; end;
+Deferred.Fail = function( self, ... ) self._promise:Fail( ... ); return self; end;
+Deferred.Progress = function( self, ... ) self._promise:Progress( ... ); return self; end;
+Deferred.Always = function( self, ... ) self._promise:Always( ... ); return self; end;
 
 ---
 --- Resolves the Deferred object.

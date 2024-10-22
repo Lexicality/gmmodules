@@ -17,7 +17,7 @@
 --]]
 
 local setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHalt =
-	  setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHalt or print;
+	  setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHalt or print
 
 ---
 --- This module is a pure Lua implementation of the CommonJS Promises/A spec, using a basic version of jQuery's interface.
@@ -28,11 +28,11 @@ local setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHal
 -- @module promises
 -- <!--
 --[[ goddamnit luadoc -->
-module('promises');
+module('promises')
 ]]
 
 --- @class Deferred
-local Deferred = nil;
+local Deferred = nil
 
 ---
 --- Does a basic form of OO
@@ -40,9 +40,9 @@ local Deferred = nil;
 --- @param ... any Stuff to pass to the ctor
 --- @return any #ye new object
 local function new( tab, ... )
-	local ret = setmetatable( {}, {__index=tab} );
-	ret:_init( ... );
-	return ret;
+	local ret = setmetatable( {}, {__index=tab} )
+	ret:_init( ... )
+	return ret
 end
 
 ---
@@ -53,11 +53,11 @@ end
 --- @overload fun(func: nil, self: any): nil
 local function bind( func, self )
 	if ( not func ) then
-		return;
+		return
 	elseif ( self ) then
 		return function( ... ) return func( self, ... ); end
 	else
-		return func;
+		return func
 	end
 end
 
@@ -68,9 +68,9 @@ end
 --- @return T #1x completely harmless function.
 local function pbind( func )
 	return function( ... )
-		local r, e = pcall( func, ... );
+		local r, e = pcall( func, ... )
 		if ( not r ) then
-			ErrorNoHalt( 'Callback failed: ', e, "\n" );
+			ErrorNoHalt( 'Callback failed: ', e, "\n" )
 		end
 	end
 end
@@ -109,70 +109,70 @@ local Promise = {
 --- @return Promise A new promise object that will be resolved, rejected or notified when this one is - after the values have been filtered through the above functions.
 function Promise:Then( done, fail, prog )
 	--- @type Deferred
-	local def = new(Deferred);
+	local def = new(Deferred)
 	if ( type( done ) == 'function' ) then
-		local d = done;
+		local d = done
 		done = function( ... )
-			local ret = { pcall( d, ... ) };
+			local ret = { pcall( d, ... ) }
 			if ( not ret[1] ) then
-				def._promise._errd = true;
-				def:Reject( ret[2] );
-				return;
+				def._promise._errd = true
+				def:Reject( ret[2] )
+				return
 			end
 			if ( type( ret[2] ) == 'table' and ret[2]._IsPromise ) then
-				local r = ret[2];
-				r:Progress( bind( def.Notify, def ), true );
-				r:Done( bind( def.Resolve, def ),    true );
-				r:Fail( bind( def.Reject, def ),     true );
+				local r = ret[2]
+				r:Progress( bind( def.Notify, def ), true )
+				r:Done( bind( def.Resolve, def ),    true )
+				r:Fail( bind( def.Reject, def ),     true )
 			else
-				def:Resolve( unpack( ret, 2 ) );
+				def:Resolve( unpack( ret, 2 ) )
 			end
 		end
 	else
 		done = function(...) return def:Resolve(...) end
 	end
 	if ( type( fail ) == 'function' ) then
-		local f = fail;
+		local f = fail
 		fail = function( ... )
-			local ret = { pcall( f, ... ) };
+			local ret = { pcall( f, ... ) }
 			if ( not ret[1] ) then
-				def._promise._errd = true;
-				def:Reject( ret[2] );
-				return;
+				def._promise._errd = true
+				def:Reject( ret[2] )
+				return
 			end
 			if ( type( ret[2] ) == 'table' and ret[2]._IsPromise ) then
-				local r = ret[2];
-				r:Progress( bind( def.Notify, def ), true );
-				r:Done( bind( def.Resolve, def ),    true );
-				r:Fail( bind( def.Reject, def ),     true );
+				local r = ret[2]
+				r:Progress( bind( def.Notify, def ), true )
+				r:Done( bind( def.Resolve, def ),    true )
+				r:Fail( bind( def.Reject, def ),     true )
 			else
-				def:Resolve( unpack( ret, 2 ) );
+				def:Resolve( unpack( ret, 2 ) )
 			end
 		end
 	else
-		fail = function(...) return def:Reject(...) end;
+		fail = function(...) return def:Reject(...) end
 	end
 	-- Promises/A barely mentions progress handlers, so I've just made this up.
 	if ( type( prog ) == 'function' ) then
-		local p = prog;
+		local p = prog
 		prog = function( ... )
-			local ret = { pcall( p, ... ) };
+			local ret = { pcall( p, ... ) }
 			if ( not ret[1] ) then
-				ErrorNoHalt( "Progress handler failed: ", ret[2], "\n" );
+				ErrorNoHalt( "Progress handler failed: ", ret[2], "\n" )
 				-- Carry on as if that never happened
-				def:Notify( ... );
+				def:Notify( ... )
 			else
-				def:Notify( unpack( ret, 2 ) );
+				def:Notify( unpack( ret, 2 ) )
 			end
 		end
 	else
-		prog = function(...) return def:Notify(...) end;
+		prog = function(...) return def:Notify(...) end
 	end
 	-- Run progress first so any progs happen before the resolution
-	self:Progress( prog, true );
-	self:Done( done, true );
-	self:Fail( fail, true );
-	return def:Promise();
+	self:Progress( prog, true )
+	self:Done( done, true )
+	self:Fail( fail, true )
+	return def:Promise()
 end
 
 ---
@@ -181,15 +181,15 @@ end
 --- @return self
 function Promise:Done( done, _ )
 	if ( not _ ) then
-		done = pbind( done );
+		done = pbind( done )
 	end
 	if ( self._state == 'done' ) then
-		done( unpack( self._res ) );
+		done( unpack( self._res ) )
 	else
-		table.insert( self._dones, done );
+		table.insert( self._dones, done )
 	end
-	return self;
-end;
+	return self
+end
 
 ---
 --- Adds a handler to be called when the Promise object is rejected
@@ -197,15 +197,15 @@ end;
 --- @return self
 function Promise:Fail( fail, _ )
 	if ( not _ ) then
-		fail = pbind( fail );
+		fail = pbind( fail )
 	end
 	if ( self._state == 'fail' ) then
 		fail( unpack( self._res ) )
 	else
-		table.insert( self._fails, fail );
+		table.insert( self._fails, fail )
 	end
-	return self;
-end;
+	return self
+end
 
 ---
 --- Adds a handler to be called when the Promise object is notified of a progress event
@@ -213,16 +213,16 @@ end;
 --- @return self
 function Promise:Progress( prog, _ )
 	if ( not _ ) then
-		prog = pbind( prog );
+		prog = pbind( prog )
 	end
-	table.insert( self._progs, prog );
+	table.insert( self._progs, prog )
 	if ( self._progd ) then
 		for _, d in ipairs( self._progd ) do
-			prog( unpack(d) );
+			prog( unpack(d) )
 		end
 	end
-	return self;
-end;
+	return self
+end
 
 ---
 --- Adds a handler to be called when the Promise object is rejected due to an error
@@ -230,16 +230,16 @@ end;
 --- @return self
 function Promise:Error( err, _ )
 	if ( not _ ) then
-		err = pbind( err );
+		err = pbind( err )
 	end
 	if ( self._state == 'fail' ) then
 		if ( self._errd ) then
 			err( unpack( self._res ) )
 		end
 	else
-		table.insert( self._errs, err );
+		table.insert( self._errs, err )
 	end
-	return self;
+	return self
 end
 
 ---
@@ -248,28 +248,28 @@ end
 --- @return self
 function Promise:Always( alwy, _ )
 	if ( not _ ) then
-		alwy = pbind( alwy );
+		alwy = pbind( alwy )
 	end
 	if ( self._state ~= 'pending' ) then
-		alwy( unpack( self._res ) );
+		alwy( unpack( self._res ) )
 	else
 		table.insert( self._alwys, alwy )
 	end
-	return self;
-end;
+	return self
+end
 
 ---
 --- ctor
 --- @see Deferred:Promise
 function Promise:_init()
-	self._state = 'pending';
-	self._errd = false;
-	self._dones = {};
-	self._fails = {};
-	self._progs = {};
-	self._alwys = {};
-	self._errs  = {};
-end;
+	self._state = 'pending'
+	self._errd = false
+	self._dones = {}
+	self._fails = {}
+	self._progs = {}
+	self._alwys = {}
+	self._errs  = {}
+end
 
 ---
 --- The 'serverside' deferred object w/ the mutation functions.
@@ -280,13 +280,13 @@ end;
 Deferred = {
 	_IsDeferred = true,
 	_IsPromise = true,
-};
+}
 -- Proxies
-Deferred.Then = function( self, ... ) return self._promise:Then( ... ); end;
-Deferred.Done = function( self, ... ) self._promise:Done( ... ); return self; end;
-Deferred.Fail = function( self, ... ) self._promise:Fail( ... ); return self; end;
-Deferred.Progress = function( self, ... ) self._promise:Progress( ... ); return self; end;
-Deferred.Always = function( self, ... ) self._promise:Always( ... ); return self; end;
+Deferred.Then = function( self, ... ) return self._promise:Then( ... ); end
+Deferred.Done = function( self, ... ) self._promise:Done( ... ); return self; end
+Deferred.Fail = function( self, ... ) self._promise:Fail( ... ); return self; end
+Deferred.Progress = function( self, ... ) self._promise:Progress( ... ); return self; end
+Deferred.Always = function( self, ... ) self._promise:Always( ... ); return self; end
 
 ---
 --- Resolves the Deferred object.
@@ -294,20 +294,20 @@ Deferred.Always = function( self, ... ) self._promise:Always( ... ); return self
 --- @param ... any The params to pass to the handlers
 --- @return self
 function Deferred:Resolve( ... )
-	local p = self._promise;
+	local p = self._promise
 	if ( p._state ~= 'pending' ) then
-		error( "Tried to resolve an already " .. ( p._state == "done" and "resolved" or "rejected" ) .. " deferred!", 2 );
+		error( "Tried to resolve an already " .. ( p._state == "done" and "resolved" or "rejected" ) .. " deferred!", 2 )
 	end
-	p._state = 'done';
-	p._res = { ... };
+	p._state = 'done'
+	p._res = { ... }
 	for _, f in pairs( p._dones ) do
-		f( ... );
+		f( ... )
 	end
 	for _, f in pairs( p._alwys ) do
-		f( ... );
+		f( ... )
 	end
-	return self;
-end;
+	return self
+end
 
 ---
 --- Rejects the Deferred object.
@@ -315,25 +315,25 @@ end;
 --- @param ... any The params to pass to the handlers
 --- @return self
 function Deferred:Reject( ... )
-	local p = self._promise;
+	local p = self._promise
 	if ( p._state ~= 'pending' ) then
-		error( "Tried to reject an already " .. ( p._state == "done" and "resolved" or "rejected" ) .. " deferred!", 2 );
+		error( "Tried to reject an already " .. ( p._state == "done" and "resolved" or "rejected" ) .. " deferred!", 2 )
 	end
-	p._state = 'fail';
-	p._res = { ... };
+	p._state = 'fail'
+	p._res = { ... }
 	for _, f in pairs( p._fails ) do
-		f( ... );
+		f( ... )
 	end
 	if ( self._promise._errd ) then
 		for _, f in pairs( p._errs ) do
-			f( ... );
+			f( ... )
 		end
 	end
 	for _, f in pairs( p._alwys ) do
-		f( ... );
+		f( ... )
 	end
-	return self;
-end;
+	return self
+end
 
 ---
 --- Notifies the Deferred object of a progress update.
@@ -341,37 +341,37 @@ end;
 --- @param ... any The params to pass to the handlers
 --- @return self
 function Deferred:Notify( ... )
-	local p = self._promise;
+	local p = self._promise
 	if ( p._state ~= 'pending' ) then
-		error( "Tried to notify an already " .. ( p._state == "done" and "resolved" or "rejected" ) .. " deferred!", 2 );
+		error( "Tried to notify an already " .. ( p._state == "done" and "resolved" or "rejected" ) .. " deferred!", 2 )
 	end
-	p._progd = p._progd or {};
-	table.insert( p._progd, { ... } );
+	p._progd = p._progd or {}
+	table.insert( p._progd, { ... } )
 	for _, f in pairs( p._progs ) do
-		f( ... );
+		f( ... )
 	end
-	return self;
-end;
+	return self
+end
 
 ---
 --- Returns the non-mutatable Promise for this Deferred object
 --- @return Promise a Promise object
 --- @see Promise
 function Deferred:Promise()
-	return self._promise;
-end;
+	return self._promise
+end
 
 ---
 --- ctor
 --- @see Deferred
 function Deferred:_init()
-	self._promise = new( Promise );
-end;
+	self._promise = new( Promise )
+end
 
 
 ---
 --- Creates and returns a new deferred object
 --- @return Deferred
 return function()
-	return new( Deferred );
+	return new( Deferred )
 end

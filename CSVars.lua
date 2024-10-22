@@ -17,34 +17,34 @@
 --]]
 
 -- Server functions
-local umsg, pairs, error, SERVER, tostring = umsg, pairs, error, SERVER, tostring;
+local umsg, pairs, error, SERVER, tostring = umsg, pairs, error, SERVER, tostring
 -- Client functions
-local ErrorNoHalt, pcall, usermessage = ErrorNoHalt, pcall, usermessage;
+local ErrorNoHalt, pcall, usermessage = ErrorNoHalt, pcall, usermessage
 -- Enums
-CLASS_STRING    = 1;
-CLASS_LONG      = 2;
-CLASS_SHORT     = 3;
-CLASS_BOOL      = 4;
-CLASS_VECTOR    = 5;
-CLASS_ENTITY    = 6;
-CLASS_ANGLE     = 7;
-CLASS_CHAR      = 8;
-CLASS_FLOAT     = 9;
+CLASS_STRING    = 1
+CLASS_LONG      = 2
+CLASS_SHORT     = 3
+CLASS_BOOL      = 4
+CLASS_VECTOR    = 5
+CLASS_ENTITY    = 6
+CLASS_ANGLE     = 7
+CLASS_CHAR      = 8
+CLASS_FLOAT     = 9
 -- locals
-local c_str = CLASS_STRING;
-local c_lng = CLASS_LONG;
-local c_srt = CLASS_SHORT;
-local c_bln = CLASS_BOOL;
-local c_vec = CLASS_VECTOR;
-local c_ent = CLASS_ENTITY;
-local c_ang = CLASS_ANGLE;
-local c_chr = CLASS_CHAR;
-local c_flt = CLASS_FLOAT;
+local c_str = CLASS_STRING
+local c_lng = CLASS_LONG
+local c_srt = CLASS_SHORT
+local c_bln = CLASS_BOOL
+local c_vec = CLASS_VECTOR
+local c_ent = CLASS_ENTITY
+local c_ang = CLASS_ANGLE
+local c_chr = CLASS_CHAR
+local c_flt = CLASS_FLOAT
 
 if (CLIENT) then
 	hook.Add("LocalPlayerCreated", "CSVars Startup", function(ply)
 		CSVars.PlayerInitialized(ply)
-	end);
+	end)
 end
 
 ---
@@ -67,15 +67,15 @@ local inverted = {
 
 if (SERVER) then
 	local function handle(ply, class, key, value)
-		umsg.Start("CSVar", ply);
-			umsg.Char(class);
-			umsg.String(key);
-			local name = inverted[class];
+		umsg.Start("CSVar", ply)
+			umsg.Char(class)
+			umsg.String(key)
+			local name = inverted[class]
 			if (not name) then
-				error("Unknown class '" .. tostring(class) .. "' for CSVar '" .. key .."'='" .. tostring(value) .."'!", 3);
+				error("Unknown class '" .. tostring(class) .. "' for CSVar '" .. key .."'='" .. tostring(value) .."'!", 3)
 			end
-			umsg[name](value);
-		umsg.End();
+			umsg[name](value)
+		umsg.End()
 	end
 
 	---
@@ -86,8 +86,8 @@ if (SERVER) then
 	-- @param value The value to set
 	function SetPlayer(ply, class, key, value)
 	if (ply.CSVars[key] == nil or ply.CSVars[key] ~= value) then
-		ply.CSVars[key] = value;
-		handle(ply, class, key, value);
+		ply.CSVars[key] = value
+		handle(ply, class, key, value)
 		end
 	end
 
@@ -97,25 +97,25 @@ if (SERVER) then
 	-- @param key The name of the variable to set on the client
 	-- @param value The value to set
 	function SetGlobal(class, key, value)
-		handle(nil, class, key, value);
+		handle(nil, class, key, value)
 		for _, ply in pairs(player.GetAll()) do
-			ply.CSVars[key] = value;
+			ply.CSVars[key] = value
 		end
 	end
 
 
 else
 	vars = {}
-	local hooks = {};
-	local lpl = NULL;
+	local hooks = {}
+	local lpl = NULL
 	---
 	-- Adds a hook to be called every time a CSVar is updated
 	-- @param key The name of the CSVar to hook on
 	-- @param name The unique name of the hook
 	-- @param func (value, class) the hook callback
 	function Hook(key, name, func)
-		hooks[key] = hooks[key] or {};
-		hooks[key][name] = func;
+		hooks[key] = hooks[key] or {}
+		hooks[key][name] = func
 	end
 
 	---
@@ -124,48 +124,48 @@ else
 	-- @param name The unique name of the hook
 	function UnHook(key, name)
 		if (hooks[key] and hooks[key][name]) then
-			hooks[key][name] = nil;
+			hooks[key][name] = nil
 		end
 	end
 	local function singleVar(msg)
-		local class = msg:ReadChar();
-		local key = msg:ReadString();
+		local class = msg:ReadChar()
+		local key = msg:ReadString()
 
-		local name = inverted[class];
+		local name = inverted[class]
 		if (not name) then
-			ErrorNoHalt("Unknown class sent for CSVar '",key,"': ", class, "!");
-			return;
+			ErrorNoHalt("Unknown class sent for CSVar '",key,"': ", class, "!")
+			return
 		end
-		local var = msg["Read" .. name](msg);
-		vars[key] = var;
+		local var = msg["Read" .. name](msg)
+		vars[key] = var
 		if (hooks[key]) then
 			for _, func in pairs(hooks[key]) do
-				local res, err = pcall(func, var, class);
+				local res, err = pcall(func, var, class)
 				if (not res) then
-					ErrorNoHalt("Error in CSVar hook '", name, "' for '", key, "': ", err);
+					ErrorNoHalt("Error in CSVar hook '", name, "' for '", key, "': ", err)
 				end
 			end
 		end
 		-- Check if the local player is a valid entity.
 		if (lpl ~= NULL) then
-			lpl[key] = var;
+			lpl[key] = var
 		end
 	end
 	local function massVars(msg)
-		local num = msg:ReadChar();
+		local num = msg:ReadChar()
 		for i = 1, num do
-			singleVar(msg);
+			singleVar(msg)
 		end
 	end
-	usermessage.Hook("CSVar", singleVar);
-	usermessage.Hook("MassCSVars", massVars);
+	usermessage.Hook("CSVar", singleVar)
+	usermessage.Hook("MassCSVars", massVars)
 
 	---
 	-- Called when the player's object is created and assigned to the global lpl
 	function PlayerInitialized(ply)
-		lpl = ply;
+		lpl = ply
 		for k, v in pairs(vars) do
-			lpl[k] = v;
+			lpl[k] = v
 		end
 	end
 end

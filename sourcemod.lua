@@ -21,20 +21,20 @@
 	v1.0.0-alpha1
 --]]
 
-local sourcebans = require "sourcebans";
+local sourcebans = require "sourcebans"
 
 -- Edit this config to match the one the website gives you
 
-sourcebans.SetConfig("hostname", "localhost");       -- Database Hostname
-sourcebans.SetConfig("username", "root");            -- Database Login name
-sourcebans.SetConfig("password", "");                -- Database Login Password
-sourcebans.SetConfig("database", "sourcebans");      -- Database 'database' or 'schema' selection
-sourcebans.SetConfig("dbprefix", "sbans");           -- Prefix for tables in the database. (This example would say your tables are called sbans_bans and so on)
-sourcebans.SetConfig("portnumb", 3306);              -- Database Port number
-sourcebans.SetConfig("serverid", 1);                 -- The ID given to this server by the SourceBans website
-sourcebans.SetConfig("website", "bans.example.com"); -- The URL where people can find your sourcebans install (Do not put http:// or the kick reason will break!)
-sourcebans.SetConfig("showbanreason", false);        -- Show the ban reason in the kick message. Do not use if you do not have gatekeeper installed or you will crash people sometimes.
-sourcebans.SetConfig("dogroups", false);             -- Set user groups or not. Set this to false unless your admins are in a servergroup called 'Admin' and your superadmins are in 'SuperAdmin'.
+sourcebans.SetConfig("hostname", "localhost")       -- Database Hostname
+sourcebans.SetConfig("username", "root")            -- Database Login name
+sourcebans.SetConfig("password", "")                -- Database Login Password
+sourcebans.SetConfig("database", "sourcebans")      -- Database 'database' or 'schema' selection
+sourcebans.SetConfig("dbprefix", "sbans")           -- Prefix for tables in the database. (This example would say your tables are called sbans_bans and so on)
+sourcebans.SetConfig("portnumb", 3306)              -- Database Port number
+sourcebans.SetConfig("serverid", 1)                 -- The ID given to this server by the SourceBans website
+sourcebans.SetConfig("website", "bans.example.com") -- The URL where people can find your sourcebans install (Do not put http:// or the kick reason will break!)
+sourcebans.SetConfig("showbanreason", false)        -- Show the ban reason in the kick message. Do not use if you do not have gatekeeper installed or you will crash people sometimes.
+sourcebans.SetConfig("dogroups", false)             -- Set user groups or not. Set this to false unless your admins are in a servergroup called 'Admin' and your superadmins are in 'SuperAdmin'.
 
 -- Do not edit below this line
 
@@ -42,7 +42,7 @@ sourcebans.SetConfig("dogroups", false);             -- Set user groups or not. 
 
 
 
-sourcebans.Activate();
+sourcebans.Activate()
 
 local table, os, string, player, concommand
 	= table, os, string, player, concommand
@@ -54,268 +54,268 @@ local HUD_PRINTCONSOLE, HUD_PRINTTALK, HUD_PRINTCENTER
 	= HUD_PRINTCONSOLE, HUD_PRINTTALK, HUD_PRINTCENTER
 
 local function notifymessage( ... )
-	local words = table.concat( { "[" , os.date() , "][sourcemod.lua] " , ... }, "" ) .. "\n";
-	ServerLog( words );
-	Msg( words );
+	local words = table.concat( { "[" , os.date() , "][sourcemod.lua] " , ... }, "" ) .. "\n"
+	ServerLog( words )
+	Msg( words )
 end
 
 -- Borrowed from my gamemode, Applejack
 local function playerGet( id )
-	local res, len, name, num, pname, lon;
-	id = string.Trim( id );
-	name = string.lower( id );
-	num = tonumber( id );
-	id = string.upper( id );
+	local res, len, name, num, pname, lon
+	id = string.Trim( id )
+	name = string.lower( id )
+	num = tonumber( id )
+	id = string.upper( id )
 	for _, ply in pairs( player.GetAll() ) do
-		pname = ply:Name( ):lower( );
+		pname = ply:Name( ):lower( )
 		if ( ply:UserID( ) == num or ply:SteamID( ) == id or pname == name ) then
-			return ply;
+			return ply
 		elseif ( string.find( pname, name, 1, true ) ) then
-			lon = pname:len();
+			lon = pname:len()
 			if ( res ) then
 				if ( lon < len ) then
-					res = ply;
-					len = lon;
+					res = ply
+					len = lon
 				end
 			else
-				res = ply;
-				len = lon;
+				res = ply
+				len = lon
 			end
 		end
 	end
-	return res;
+	return res
 end
 local function complain( ply, msg, lvl )
 	if ( not ( ply and ply:IsValid() ) ) then
-		print( msg );
+		print( msg )
 	else
-		ply:PrintMessage( lvl or HUD_PRINTCONSOLE, msg );
+		ply:PrintMessage( lvl or HUD_PRINTCONSOLE, msg )
 	end
-	return false;
+	return false
 end
 local function not4u( ply, cmd )
-	ply:ChatPrint( "Unknown Command: '" .. cmd .. "'\n" );
+	ply:ChatPrint( "Unknown Command: '" .. cmd .. "'\n" )
 end
 -- Gets a steamID from concommand calls that don't bother to quote it.
 local function getSteamID( tab )
-	local a,b,c,d,e = tab[1], tab[2], tonumber( tab[3]), tab[4], tonumber(tab[5] );
+	local a,b,c,d,e = tab[1], tab[2], tonumber( tab[3]), tab[4], tonumber(tab[5] )
 	if ( string.find( a, "STEAM_%d:%d:%d+" ) ) then
-		return table.remove( tab, 1 );
+		return table.remove( tab, 1 )
 	elseif ( string.find( a, "STEAM_" ) and b == ":" and c and d == ":" and e ) then
 		-- Kill the five entries as if they were one
-		table.remove( tab, 1 );
-		table.remove( tab, 1 );
-		table.remove( tab, 1 );
-		table.remove( tab, 1 );
-		table.remove( tab, 1 );
-		return a .. b .. c .. d .. e;
+		table.remove( tab, 1 )
+		table.remove( tab, 1 )
+		table.remove( tab, 1 )
+		table.remove( tab, 1 )
+		table.remove( tab, 1 )
+		return a .. b .. c .. d .. e
 	end
 end
 -- Check if a player has authorisation to run the command.
 local function authorised( ply, flag )
 	if ( not ( ply and ply:IsValid() ) ) then
-		return true;
+		return true
 	elseif ( not ply.sourcebansinfo ) then
-		return false;
+		return false
 	end
-	return ply.sourcebansinfo.zflag or string.find( ply.sourcebansinfo.srv_flags, flag );
+	return ply.sourcebansinfo.zflag or string.find( ply.sourcebansinfo.srv_flags, flag )
 end
 
 local function complainPlayer( ply, pl, usage )
 	if ( not pl ) then
-		return complain( ply, "Invalid player!" .. usage );
+		return complain( ply, "Invalid player!" .. usage )
 	end
-	return true;
+	return true
 end
 
 local function complainTime( ply, time, usage )
 	if ( not time or time < 0 ) then
-		return complain( ply, "Invalid time!" .. usage );
+		return complain( ply, "Invalid time!" .. usage )
 	elseif ( time == 0 and not authorised( ply, sourcebans.FLAG_PERMA ) ) then
-		return complain( ply, "You are not authorised to permaban!" );
+		return complain( ply, "You are not authorised to permaban!" )
 	end
-	return true;
+	return true
 end
 
 local function complainReason( ply, reason, usage )
 	if ( reason == "" ) then
-		return complain( ply, "Invalid reason!" .. usage );
+		return complain( ply, "Invalid reason!" .. usage )
 	end
-	return true;
+	return true
 end
 
 local function complainer( ply, pl, time, reason, usage )
 	return  complainPlayer( ply, pl, usage )
 		and complainTime( ply, time, usage )
-		and complainReason( ply, reason, usage );
+		and complainReason( ply, reason, usage )
 end
 
 concommand.Add( "sm_rehash", function(ply, cmd )
 	if ( ply:IsValid()) then return not4u(ply, cmd ); end
-	notifymessage( "Rehash command recieved, reloading admins:" );
-	sourcebans.ReloadAdmins();
-end, nil, "Reload the admin list from the SQL");
+	notifymessage( "Rehash command recieved, reloading admins:" )
+	sourcebans.ReloadAdmins()
+end, nil, "Reload the admin list from the SQL")
 
-local usage = "\n - Usage: sm_psay <#userid|name|steamid> <words>";
+local usage = "\n - Usage: sm_psay <#userid|name|steamid> <words>"
 concommand.Add( "sm_psay", function(ply, _, args )
 	if ( #args < 2 ) then
-		return complain( ply, usage:sub(4) );
+		return complain( ply, usage:sub(4) )
 	elseif ( not authorised( ply, sourcebans.FLAG_CHAT ) ) then
-		return complain( ply, "You do not have access to this command!" );
+		return complain( ply, "You do not have access to this command!" )
 	end
-	local pl, words = table.remove( args,1), table.concat( args, " " ):Trim( );
-	pl = playerGet( pl );
+	local pl, words = table.remove( args,1), table.concat( args, " " ):Trim( )
+	pl = playerGet( pl )
 	if ( not pl ) then
-		return complain( ply, "Invalid player!" .. usage );
+		return complain( ply, "Invalid player!" .. usage )
 	elseif ( words == "" ) then
-		return complain( ply, "Invalid message!".. usage );
+		return complain( ply, "Invalid message!".. usage )
 	end
-	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE";
-	local name2 = pl:Name();
-	complain( ply, "( Private: " .. name2 .. " ) " .. name1 .. ": " .. words, HUD_PRINTTALK );
-	complain( pl,  "( Private: " .. name2 .. " ) " .. name1 .. ": " .. words, HUD_PRINTTALK );
-	notifymessage( name1, " triggered sm_psay to ", name2, " ( text ", words, " )" );
-end, nil, "Sends a private message to a player" .. usage);
+	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE"
+	local name2 = pl:Name()
+	complain( ply, "( Private: " .. name2 .. " ) " .. name1 .. ": " .. words, HUD_PRINTTALK )
+	complain( pl,  "( Private: " .. name2 .. " ) " .. name1 .. ": " .. words, HUD_PRINTTALK )
+	notifymessage( name1, " triggered sm_psay to ", name2, " ( text ", words, " )" )
+end, nil, "Sends a private message to a player" .. usage)
 
-local usage = "\n - Usage: sm_say <words>";
+local usage = "\n - Usage: sm_say <words>"
 concommand.Add( "sm_say", function(ply, _, args )
 	if ( #args < 1 ) then
-		return complain( ply, usage:sub(4) );
+		return complain( ply, usage:sub(4) )
 	elseif ( not authorised( ply, sourcebans.FLAG_CHAT ) ) then
-		return complain( ply, "You do not have access to this command!" );
+		return complain( ply, "You do not have access to this command!" )
 	end
-	local words = table.concat( args, " "):Trim( );
+	local words = table.concat( args, " "):Trim( )
 	if ( words == "" ) then
-		return complain( ply, "Invalid message!"..usage );
+		return complain( ply, "Invalid message!"..usage )
 	end
-	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE";
+	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE"
 	for _, pl in pairs( player.GetAll() ) do
 		if ( pl:IsValid( ) and not pl:IsBot( ) ) then
-			complain( pl, name1 .. ": " .. words, HUD_PRINTTALK );
+			complain( pl, name1 .. ": " .. words, HUD_PRINTTALK )
 		end
 	end
-	notifymessage( name1, " triggered sm_say ( text ", words, " )" );
-end, nil, "Sends a message to everyone" .. usage);
+	notifymessage( name1, " triggered sm_say ( text ", words, " )" )
+end, nil, "Sends a message to everyone" .. usage)
 
-local usage = "\n - Usage: sm_csay <words>";
+local usage = "\n - Usage: sm_csay <words>"
 concommand.Add( "sm_csay", function(ply, _, args )
 	if ( #args < 1 ) then
-		return complain( ply, usage:sub(4) );
+		return complain( ply, usage:sub(4) )
 	elseif ( not authorised( ply, sourcebans.FLAG_CHAT ) ) then
-		return complain( ply, "You do not have access to this command!" );
+		return complain( ply, "You do not have access to this command!" )
 	end
-	local words = table.concat( args, " "):Trim( );
+	local words = table.concat( args, " "):Trim( )
 	if ( words == "" ) then
-		return complain( ply, "Invalid message!"..usage );
+		return complain( ply, "Invalid message!"..usage )
 	end
-	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE";
+	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE"
 	for _, pl in pairs( player.GetAll() ) do
 		if ( pl:IsValid( ) and not pl:IsBot( ) ) then
-			complain( pl, name1 .. ": " .. words, HUD_PRINTCENTER );
+			complain( pl, name1 .. ": " .. words, HUD_PRINTCENTER )
 		end
 	end
-	notifymessage( name1, " triggered sm_csay ( text ", words, " )" );
-end, nil, "Sends a message to everyone in the center of their screen" .. usage);
+	notifymessage( name1, " triggered sm_csay ( text ", words, " )" )
+end, nil, "Sends a message to everyone in the center of their screen" .. usage)
 
-local usage = "\n - Usage: sm_chat <words>";
+local usage = "\n - Usage: sm_chat <words>"
 concommand.Add( "sm_chat", function(ply, _, args )
 	if ( #args < 1 ) then
-		return complain( ply, usage:sub(4) );
+		return complain( ply, usage:sub(4) )
 	elseif ( not authorised( ply, sourcebans.FLAG_CHAT ) ) then
-		return complain( ply, "You do not have access to this command!" );
+		return complain( ply, "You do not have access to this command!" )
 	end
-	local words = table.concat( args, " "):Trim( );
+	local words = table.concat( args, " "):Trim( )
 	if ( words == "" ) then
-		return complain( ply, "Invalid message!"..usage );
+		return complain( ply, "Invalid message!"..usage )
 	end
-	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE";
+	local name1 = ply:IsValid( ) and ply:Name( ) or "CONSOLE"
 	for _, pl in pairs( player.GetAll() ) do
 		if ( pl:IsValid( ) and pl:IsAdmin( ) ) then
-			complain( pl, "( ADMINS ) " .. name1 .. ": " .. words, HUD_PRINTTALK );
+			complain( pl, "( ADMINS ) " .. name1 .. ": " .. words, HUD_PRINTTALK )
 		end
 	end
-	notifymessage( name1, " triggered sm_chat ( text ", words, " )" );
-end, nil, "Sends a message to all online admins" .. usage);
+	notifymessage( name1, " triggered sm_chat ( text ", words, " )" )
+end, nil, "Sends a message to all online admins" .. usage)
 
-local usage = "\n - Usage: sm_ban <#userid|name> <minutes|0> <reason>";
+local usage = "\n - Usage: sm_ban <#userid|name> <minutes|0> <reason>"
 concommand.Add( "sm_ban", function(ply, _, args )
 	if ( #args < 3 ) then
-		return complain( ply, usage:sub(4) );
+		return complain( ply, usage:sub(4) )
 	elseif ( not sourcebans.IsActive() ) then
-		return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
+		return complain( ply, "Sourcebans has not been activated! Your command could not be completed." )
 	elseif ( not authorised( ply, sourcebans.FLAG_BAN ) ) then
-		return complain( ply, "You do not have access to this command!" );
+		return complain( ply, "You do not have access to this command!" )
 	end
-	local pl, time, reason = table.remove( args,1), tonumber( table.remove( args,1) ), table.concat(args, " " ):Trim( );
-	pl = playerGet( pl );
+	local pl, time, reason = table.remove( args,1), tonumber( table.remove( args,1) ), table.concat(args, " " ):Trim( )
+	pl = playerGet( pl )
 	if ( not complainer( ply, pl, time, reason, usage ) ) then
-		return;
+		return
 	end
-	local name = pl:Name();
+	local name = pl:Name()
 	local function callback( res, err )
 		if ( res ) then
 			complain( ply, "sm_ban: " .. name .. " has been banned successfully." )
 		else
-			complain( ply, "sm_ban: " .. name .. " has not been banned. " .. err );
+			complain( ply, "sm_ban: " .. name .. " has not been banned. " .. err )
 		end
 	end
-	sourcebans.BanPlayer( pl, time * 60, reason, ply, callback );
-	complain( ply, "sm_ban: Your ban request has been sent to the database." );
-end, nil, "Bans a player" .. usage);
+	sourcebans.BanPlayer( pl, time * 60, reason, ply, callback )
+	complain( ply, "sm_ban: Your ban request has been sent to the database." )
+end, nil, "Bans a player" .. usage)
 
 -- Author's note: Why would you want to only ban someone by only their IP when you have their SteamID? This is a stupid concommand. Hopefully no one will use it.
-local usage = "\n - Usage: sm_banip <ip|#userid|name> <minutes|0> <reason>";
+local usage = "\n - Usage: sm_banip <ip|#userid|name> <minutes|0> <reason>"
 concommand.Add( "sm_banip", function(ply, _, args )
 	if ( #args < 3 ) then
-		return complain( ply, usage:sub(4) );
+		return complain( ply, usage:sub(4) )
 	elseif ( not sourcebans.IsActive() ) then
-		return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
+		return complain( ply, "Sourcebans has not been activated! Your command could not be completed." )
 	elseif ( not authorised( ply, sourcebans.FLAG_BAN ) ) then
-		return complain( ply, "You do not have access to this command!" );
+		return complain( ply, "You do not have access to this command!" )
 	end
-	local id, time, reason = table.remove( args,1), tonumber( table.remove( args,1) ), table.concat(args, " " ):Trim( );
-	local pl;
+	local id, time, reason = table.remove( args,1), tonumber( table.remove( args,1) ), table.concat(args, " " ):Trim( )
+	local pl
 	if ( string.find( id, "%d+%.%d+%.%d+%.%d+" ) ) then
-		id = string.match( id, "(%d+%.%d+%.%d+%.%d+)" );
+		id = string.match( id, "(%d+%.%d+%.%d+%.%d+)" )
 		for _, ply in pairs( player.GetAll() ) do
 			if ( ply:IPAddress() == id ) then
-				pl = ply;
-				break;
+				pl = ply
+				break
 			end
 		end
 		-- FIXME: If there is no player connected on this ip but ply has FLAG_RCON, this should add the IP on its own.
 	else
-		pl = playerGet( id );
+		pl = playerGet( id )
 		if ( pl ) then
-			id = ply:IPAddress();
+			id = ply:IPAddress()
 		end
 	end
 	if ( not complainer( ply, pl, time, reason, usage ) ) then
-		return;
+		return
 	end
 	local function callback( res, err )
 		if ( res ) then
 			complain( ply, "sm_banip: " .. id .. " has been banned successfully." )
 		else
-			complain( ply, "sm_banip: " .. id .. " has not been banned. " .. err );
+			complain( ply, "sm_banip: " .. id .. " has not been banned. " .. err )
 		end
 	end
-	sourcebans.BanPlayer( pl, time * 60, reason, ply, callback );
-	complain( ply, "sm_banip: Your ban request has been sent to the database." );
-end, nil, "Bans a player by only their IP" .. usage);
+	sourcebans.BanPlayer( pl, time * 60, reason, ply, callback )
+	complain( ply, "sm_banip: Your ban request has been sent to the database." )
+end, nil, "Bans a player by only their IP" .. usage)
 
-local usage = "\n - Usage: sm_addban <minutes|0> <steamid> <reason>";
+local usage = "\n - Usage: sm_addban <minutes|0> <steamid> <reason>"
 concommand.Add( "sm_addban", function(ply, _, args )
 	if ( #args < 3 ) then
-		return complain( ply, usage:sub(4) );
+		return complain( ply, usage:sub(4) )
 	elseif ( not sourcebans.IsActive() ) then
-		return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
+		return complain( ply, "Sourcebans has not been activated! Your command could not be completed." )
 	elseif ( not authorised( ply, sourcebans.FLAG_ADDBAN ) ) then
-		return complain( ply, "You do not have access to this command!" );
+		return complain( ply, "You do not have access to this command!" )
 	end
-	local time, id, reason = tonumber( table.remove( args,1)), getSteamID( args ), table.concat(args, " " ):Trim( );
+	local time, id, reason = tonumber( table.remove( args,1)), getSteamID( args ), table.concat(args, " " ):Trim( )
 	if ( not id ) then
-		return complain( ply, "Invalid SteamID!" .. usage );
+		return complain( ply, "Invalid SteamID!" .. usage )
 	elseif ( not ( complainTime( ply, time, usage ) and complainReason( ply, reason, usage ) ) ) then
 		return
 	end
@@ -323,37 +323,37 @@ concommand.Add( "sm_addban", function(ply, _, args )
 		if ( res ) then
 			complain( ply, "sm_addban: " .. id .. " has been banned successfully." )
 		else
-			complain( ply, "sm_addban: " .. id .. " has not been banned. " .. err );
+			complain( ply, "sm_addban: " .. id .. " has not been banned. " .. err )
 		end
 	end
-	sourcebans.BanPlayerBySteamID( id, time * 60, reason, ply, '', callback );
-	complain( ply, "sm_addban: Your ban request has been sent to the database." );
-end, nil, "Bans a player by their SteamID" .. usage);
+	sourcebans.BanPlayerBySteamID( id, time * 60, reason, ply, '', callback )
+	complain( ply, "sm_addban: Your ban request has been sent to the database." )
+end, nil, "Bans a player by their SteamID" .. usage)
 
-local usage = "\n - Usage: sm_unban <steamid|ip> <reason>";
+local usage = "\n - Usage: sm_unban <steamid|ip> <reason>"
 concommand.Add( "sm_unban", function(ply, _, args )
 	if ( #args < 2 ) then
-		return complain( ply, usage:sub(4) );
+		return complain( ply, usage:sub(4) )
 	elseif ( not sourcebans.IsActive() ) then
-		return complain( ply, "Sourcebans has not been activated! Your command could not be completed." );
+		return complain( ply, "Sourcebans has not been activated! Your command could not be completed." )
 	elseif ( not authorised( ply, sourcebans.FLAG_UNBAN ) ) then
-		return complain( ply, "You do not have access to this command!" );
+		return complain( ply, "You do not have access to this command!" )
 	end
-	local id, reason, func;
+	local id, reason, func
 	if ( string.find( args[1], "%d+%.%d+%.%d+%.%d+" ) ) then
-		id = table.remove( args,1 );
-		func = sourcebans.UnbanPlayerByIPAddress;
+		id = table.remove( args,1 )
+		func = sourcebans.UnbanPlayerByIPAddress
 	else
-		id = getSteamID( args );
-		func = sourcebans.UnbanPlayerBySteamID;
+		id = getSteamID( args )
+		func = sourcebans.UnbanPlayerBySteamID
 	end
 	if ( not id ) then
-		return complain( ply, "Invalid SteamID!" .. usage );
+		return complain( ply, "Invalid SteamID!" .. usage )
 	end
 	reason = table.concat( args, " "):Trim( )
 	if ( not complainReason( ply, reason, usage ) ) then
-		return;
+		return
 	end
-	func( id, reason, ply );
-	complain( ply, "Your unban request has been sent to the database." );
-end, nil, "Unbans a player" .. usage);
+	func( id, reason, ply )
+	complain( ply, "Your unban request has been sent to the database." )
+end, nil, "Unbans a player" .. usage)

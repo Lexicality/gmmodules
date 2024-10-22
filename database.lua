@@ -52,6 +52,23 @@ local _TEST = _TEST
 -- @see NewDatabase
 module("database")
 
+--- @class DatabaseConnectionInfo
+--- @field Hostname string
+--- @field Username string
+--- @field Password string
+--- @field Database string
+--- @field Port? integer
+--- @field Socket? string
+
+--- @class DatabaseDriver
+--- @field Init? fun(self): nil
+--- @field Connect fun(self, info: DatabaseConnectionInfo): Promise
+--- @field Disconnect fun(self): nil
+--- @field Query fun(self, sql: string): Deferred
+--- @field Escape fun(self, value: string): string
+--- @field IsConnected fun(self): boolean
+--- @field CanSelect fun(self): boolean
+
 ---
 -- The main Database object the developer will generally be interacting with
 -- @name Database

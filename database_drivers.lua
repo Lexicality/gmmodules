@@ -62,6 +62,10 @@ if (_TEST) then
 end
 
 do -- TMySQL
+	---@param deferred Deferred
+	---@param results TMySQLResult
+	---@param success boolean
+	---@param err? string
 	local function mcallback(deferred, results, success, err)
 		if (success) then
 			for _, result in ipairs(results) do
@@ -73,8 +77,12 @@ do -- TMySQL
 		end
 	end
 
+	--- @class DatabaseTMySQLDriver: DatabaseDriver
+	--- @field private _db? TMySQLDB
 	local db = {}
 
+	---@param tab DatabaseConnectionInfo
+	---@return Promise
 	function db:Connect(tab)
 		local deferred = Deferred()
 		if (self._db) then
@@ -97,6 +105,8 @@ do -- TMySQL
 		end
 	end
 
+	---@param text string
+	---@return Promise
 	function db:Query(text)
 		if (not self._db) then
 			error("Cannot query without a database connected!")
@@ -106,6 +116,8 @@ do -- TMySQL
 		return deferred:Promise()
 	end
 
+	---@param text string
+	---@return string
 	function db:Escape(text)
 		return tmysql.escape(text)
 	end
@@ -126,29 +138,44 @@ do -- TMySQL
 	drivers.tmysql = db
 end
 do -- MySQLOO
+	--- @class DatabaseMySQLOOQuery : MySQLOOQuery
+	--- @field deferred Deferred
+
 	local mysqlooyes, mysqloono, mysqlooack, mysqloodata
+	---@param query DatabaseMySQLOOQuery
+	---@param results MySQLOOResults
 	function mysqlooyes(query, results)
 		query.deferred:Resolve(results)
 	end
 
+	---@param query DatabaseMySQLOOQuery
+	---@param err string
 	function mysqloono(query, err)
 		query.deferred:Reject(err)
 	end
 
+	---@param query DatabaseMySQLOOQuery
 	function mysqlooack(query)
 		mysqloono(query, "Aborted!")
 	end
 
+	---@param query DatabaseMySQLOOQuery
+	---@param result MySQLOOResult
 	function mysqloodata(query, result)
 		query.deferred:Notify(result)
 	end
 
+	--- @class DatabaseMySQLOODriver: DatabaseDriver
+	--- @field private _queue {text: string, deferred: Deferred}[]
+	--- @field private _db? MySQLOODatabase
 	local db = {}
 
 	function db:Init()
 		self._queue = {}
 	end
 
+	---@param cdata DatabaseConnectionInfo
+	---@return Promise
 	function db:Connect(cdata)
 		if (self._db) then
 			self:Disconnect()
@@ -156,6 +183,8 @@ do -- MySQLOO
 		return self:_connect(mysqloo.connect(cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port))
 	end
 
+	---@param dbobj MySQLOODatabase
+	---@return Promise
 	function db:_connect(dbobj)
 		local deferred = Deferred()
 		dbobj.onConnected = function(dbobj)
@@ -182,6 +211,9 @@ do -- MySQLOO
 		end
 	end
 
+	---@param errmsg string
+	---@param text string
+	---@return Promise
 	function db:qfail(errmsg, text)
 		local deferred = Deferred()
 		if (self._db) then
@@ -204,6 +236,9 @@ do -- MySQLOO
 		return deferred:Promise()
 	end
 
+	---@param text string
+	---@param deferred? Deferred
+	---@return Promise
 	function db:Query(text, deferred)
 		if (not self._db) then
 			error("Cannot query without a database connected!")
@@ -213,6 +248,7 @@ do -- MySQLOO
 		if (not q) then
 			return self:qfail("The DB is not connected!", text)
 		end
+		--- @cast q DatabaseMySQLOOQuery
 		q.onError   = mysqloono
 		q.onSuccess = mysqlooyes
 		q.onData    = mysqloodata
@@ -224,6 +260,8 @@ do -- MySQLOO
 		return deferred:Promise()
 	end
 
+	---@param text string
+	---@return string
 	function db:Escape(text)
 		if (not self._db) then
 			error("There is no database open to do this!")
@@ -261,8 +299,11 @@ do -- MySQLOO
 	drivers.mysqloo = db
 end
 do -- SQLite
+	--- @class DatabaseSQLiteDriver
 	local db = {}
 
+	---@param _ DatabaseConnectionInfo
+	---@return Promise
 	function db:Connect(_)
 		local deferred = Deferred()
 		deferred:Resolve(self)
@@ -272,6 +313,8 @@ do -- SQLite
 	function db:Disconnect()
 	end
 
+	---@param text string
+	---@return Promise
 	function db:Query(text)
 		local deferred = Deferred()
 		local results = sqlite.Query(text)
@@ -290,6 +333,8 @@ do -- SQLite
 		return true
 	end
 
+	---@param text string
+	---@return string
 	function db:Escape(text)
 		return sqlite.SQLStr(text)
 	end

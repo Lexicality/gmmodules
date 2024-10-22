@@ -29,38 +29,38 @@ local Deferred = require 'promises';
 local mockDB = {
 	["Connect"] = function(self)
 		return Deferred():Resolve(self):Promise();
-	end;
-	["Disconnect"] = function() end;
+	end,
+	["Disconnect"] = function() end,
 	["IsConnected"] = function()
 		return true;
-	end;
+	end,
 	["Escape"] = function(text)
 		return text;
-	end;
+	end,
 	["Query"] = function()
 		return Deferred():Reject("This method should be overriden!"):Promise();
-	end;
+	end,
 	["CanSelect"] = function()
 		return true;
-	end;
+	end,
 }
 
 local invalidDB = {
-	["Connect"] = function() end;
-	["Disconnect"] = function() end;
-	["IsConnected"] = function() end;
-	["Escape"] = function() end;
-	["Query"] = function() end;
-	["CanSelect"] = function() return false; end;
+	["Connect"] = function() end,
+	["Disconnect"] = function() end,
+	["IsConnected"] = function() end,
+	["Escape"] = function() end,
+	["Query"] = function() end,
+	["CanSelect"] = function() return false; end,
 }
 
 local emptyDB = {
-	["Connect"] = function() end;
-	["Disconnect"] = function() end;
-	["IsConnected"] = function() end;
-	["Escape"] = function() end;
-	["Query"] = function() end;
-	["CanSelect"] = function() return true; end;
+	["Connect"] = function() end,
+	["Disconnect"] = function() end,
+	["IsConnected"] = function() end,
+	["Escape"] = function() end,
+	["Query"] = function() end,
+	["CanSelect"] = function() return true; end,
 }
 
 -- safety
@@ -166,19 +166,19 @@ describe("NewDatabase", function()
 		checkErrors("Hostname", "Username", "Password")
 		checkErrors("Hostname", "Username", "Database")
 		assert.has.errors(function() database.NewDatabase({
-			Username = "";
-			Hostname = "";
-			Password = "";
-			Database = "";
-			Port = "Hi!";
+			Username = "",
+			Hostname = "",
+			Password = "",
+			Database = "",
+			Port = "Hi!",
 		}) end);
 	end)
 	it("Should return an objet", function()
 		assert.is_table(database.NewDatabase({
-			Username = "";
-			Hostname = "";
-			Password = "";
-			Database = "";
+			Username = "",
+			Hostname = "",
+			Password = "",
+			Database = "",
 		}))
 	end);
 end)
@@ -338,10 +338,10 @@ describe("Database", function()
 		mockObj = mock(copy(mockDB));
 		database.RegisterDBMethod("Mock", mockObj);
 		cparams = {
-			Username = "username";
-			Hostname = "hostname";
-			Password = "password";
-			Database = "database";
+			Username = "username",
+			Hostname = "hostname",
+			Password = "password",
+			Database = "database",
 		};
 		db = database.NewDatabase(cparams);
 	end)
@@ -551,10 +551,10 @@ describe("PreparedQuery", function()
 		end
 		database.RegisterDBMethod("Mock", mockObj);
 		cparams = {
-			Username = "username";
-			Hostname = "hostname";
-			Password = "password";
-			Database = "database";
+			Username = "username",
+			Hostname = "hostname",
+			Password = "password",
+			Database = "database",
 		};
 		db = database.NewDatabase(cparams);
 		db:Connect();

@@ -53,15 +53,15 @@ end
 module("CSVars")
 
 local inverted = {
-	[c_str] = "String";
-	[c_lng] = "Long";
-	[c_srt] = "Short";
-	[c_bln] = "Bool";
-	[c_vec] = "Vector";
-	[c_ent] = "Entity";
-	[c_ang] = "Angle";
-	[c_chr] = "Char";
-	[c_flt] = "Float";
+	[c_str] = "String",
+	[c_lng] = "Long",
+	[c_srt] = "Short",
+	[c_bln] = "Bool",
+	[c_vec] = "Vector",
+	[c_ent] = "Entity",
+	[c_ang] = "Angle",
+	[c_chr] = "Char",
+	[c_flt] = "Float",
 }
 
 

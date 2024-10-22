@@ -38,10 +38,10 @@ end
 local function _pending()
 	local d = Deferred();
 	return {
-		promise = function() return d:Promise(); end;
-		fulfill = function(value) return d:Resolve(value); end;
-		reject = function(reason) return d:Reject(reason); end;
-		notify = function(value) return d:Notify(value); end;
+		promise = function() return d:Promise(); end,
+		fulfill = function(value) return d:Resolve(value); end,
+		reject = function(reason) return d:Reject(reason); end,
+		notify = function(value) return d:Notify(value); end,
 	};
 end
 

@@ -66,31 +66,31 @@ module( "sourcebans" );
 --]]
 --[[ Config ]]--
 local config = {
-	hostname = "localhost";
-	username = "root";
-	password = "";
-	database = "sourcebans";
-	dbprefix = "sbans";
-	website  = "";
-	portnumb = 3306;
-	serverid = -1;
-	dogroups = false;
-	showbanreason = true;
+	hostname = "localhost",
+	username = "root",
+	password = "",
+	database = "sourcebans",
+	dbprefix = "sbans",
+	website  = "",
+	portnumb = 3306,
+	serverid = -1,
+	dogroups = false,
+	showbanreason = true,
 };
 local dbConfig = {
-	hostname = Hostname;
-	username = Username;
-	password = Password;
-	database = Database;
-	portnumb = Port    ;
+	hostname = Hostname,
+	username = Username,
+	password = Password,
+	database = Database,
+	portnumb = Port    ,
 }
 
 local db = database.NewDatabase({
-	Hostname = config.hostname;
-	Username = config.username;
-	Password = config.password;
-	Database = config.database;
-	Port     = config.portnumb;
+	Hostname = config.hostname,
+	Username = config.username,
+	Password = config.password,
+	Database = config.database,
+	Port     = config.portnumb,
 });
 
 --[[ Automatic IP Locator ]]--
@@ -99,10 +99,10 @@ local serverip   = GetConVarString( 'ip' );
 if ( not serverip ) then -- Thanks raBBish! http://www.facepunch.com/showpost.php?p=23402305&postcount=1382
 	local hostip = GetConVarNumber( "hostip" );
 	serverip = table.concat( {
-		bit.band( hostip / 2^24, 0xFF );
-		bit.band( hostip / 2^16, 0xFF );
-		bit.band( hostip / 2^8,  0xFF );
-		bit.band( hostip,        0xFF );
+		bit.band( hostip / 2^24, 0xFF ),
+		bit.band( hostip / 2^16, 0xFF ),
+		bit.band( hostip / 2^8,  0xFF ),
+		bit.band( hostip,        0xFF ),
 	}, '.' );
 end
 
@@ -110,26 +110,26 @@ end
 local admins, adminsByID, adminGroups, database;
 local queries = {
 	-- BanChkr
-	["Check for Bans"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP()) AND removetype IS NULL AND (authid = '%s' OR ip = '%s' ) LIMIT 1";
-	-- ["Check for Bans by IP"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND ip = '%s' LIMIT 1";
-	["Check for Bans by SteamID"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND authid = '%s' LIMIT 1";
-	["Get All Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL;";
-	["Get Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE (length = 0 OR ends > UNIX_TIMESTAMP()) AND removetype IS NULL LIMIT %d OFFSET %d;";
+	["Check for Bans"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP()) AND removetype IS NULL AND (authid = '%s' OR ip = '%s' ) LIMIT 1",
+	-- ["Check for Bans by IP"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND ip = '%s' LIMIT 1",
+	["Check for Bans by SteamID"] = "SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL AND authid = '%s' LIMIT 1",
+	["Get All Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP() ) AND removetype IS NULL;",
+	["Get Active Bans"] = "SELECT ip, authid, name, created, ends, length, reason, aid  FROM %s_bans WHERE (length = 0 OR ends > UNIX_TIMESTAMP()) AND removetype IS NULL LIMIT %d OFFSET %d;",
 
-	["Log Join Attempt"] = "INSERT INTO %s_banlog ( sid, time, name, bid) VALUES( %i, %i, '%s', %i )";
+	["Log Join Attempt"] = "INSERT INTO %s_banlog ( sid, time, name, bid) VALUES( %i, %i, '%s', %i )",
 
 	-- Admins
-	["Select Admin Groups"] = "SELECT flags, immunity, name FROM %s_srvgroups";
-	["Select Admins"] = "SELECT a.aid, a.user, a.authid, a.srv_group, a.srv_flags, a.immunity FROM %s_admins a, %s_admins_servers_groups g WHERE g.server_id = %i AND g.admin_id = a.aid";
+	["Select Admin Groups"] = "SELECT flags, immunity, name FROM %s_srvgroups",
+	["Select Admins"] = "SELECT a.aid, a.user, a.authid, a.srv_group, a.srv_flags, a.immunity FROM %s_admins a, %s_admins_servers_groups g WHERE g.server_id = %i AND g.admin_id = a.aid",
 
 	-- Misc
-	["Look up serverID"] = "SELECT sid FROM %s_servers WHERE ip = '%s' AND port = '%s' LIMIT 1";
+	["Look up serverID"] = "SELECT sid FROM %s_servers WHERE ip = '%s' AND port = '%s' LIMIT 1",
 
 	-- Bannin
-	["Ban Player"] = "INSERT INTO %s_bans ( ip, authid, name, created, ends, length, reason, aid, adminIp, sid, country) VALUES('%s', '%s', '%s', %i, %i, %i, '%s', %i, '%s', %i, ' ' )";
+	["Ban Player"] = "INSERT INTO %s_bans ( ip, authid, name, created, ends, length, reason, aid, adminIp, sid, country) VALUES('%s', '%s', '%s', %i, %i, %i, '%s', %i, '%s', %i, ' ' )",
 	-- Unbannin
-	["Unban SteamID"] = "UPDATE %s_bans SET RemovedBy = %i, RemoveType = 'U', RemovedOn = UNIX_TIMESTAMP( ), ureason = '%s' WHERE ( length = 0 OR ends > UNIX_TIMESTAMP( ) ) AND removetype IS NULL AND authid = '%s'";
-	["Unban IPAddress"] = "UPDATE %s_bans SET RemovedBy = %i, RemoveType = 'U', RemovedOn = UNIX_TIMESTAMP( ), ureason = '%s' WHERE ( length = 0 OR ends > UNIX_TIMESTAMP( ) ) AND removetype IS NULL AND ip = '%s'";
+	["Unban SteamID"] = "UPDATE %s_bans SET RemovedBy = %i, RemoveType = 'U', RemovedOn = UNIX_TIMESTAMP( ), ureason = '%s' WHERE ( length = 0 OR ends > UNIX_TIMESTAMP( ) ) AND removetype IS NULL AND authid = '%s'",
+	["Unban IPAddress"] = "UPDATE %s_bans SET RemovedBy = %i, RemoveType = 'U', RemovedOn = UNIX_TIMESTAMP( ), ureason = '%s' WHERE ( length = 0 OR ends > UNIX_TIMESTAMP( ) ) AND removetype IS NULL AND ip = '%s'",
 };
 local idLookup = {};
 
@@ -233,26 +233,26 @@ queries["Check for Bans"]:SetCallbacks( {
 			:Prepare( config.dbprefix, config.serverid, os.time(), name, data.bid )
 			:SetCallbackArgs( name )
 			:Run();
-	end;
-	Fail = errCallback( "check %s's ban status" );
+	end,
+	Fail = errCallback( "check %s's ban status" ),
 } );
 queries["Check for Bans by SteamID"]:SetCallbacks( {
-	Fail = errCallback( "check %s's ban status" );
+	Fail = errCallback( "check %s's ban status" ),
 } );
 queries["Get All Active Bans"]:SetCallbacks( {
-	Fail = errCallback( "acquire every ban ever" );
+	Fail = errCallback( "acquire every ban ever" ),
 } );
 queries["Get Active Bans"]:SetCallbacks( {
-	Fail = errCallback( "acquire page #%d of bans" );
+	Fail = errCallback( "acquire page #%d of bans" ),
 } );
 queries["Log Join Attempt"]:SetCallbacks( {
-	Fail = errCallback( "store %s's foiled join attempt" );
+	Fail = errCallback( "store %s's foiled join attempt" ),
 } );
 queries["Look up serverID"]:SetCallbacks( {
 	Progress = function( data )
 		config.serverid = data.sid;
-	end;
-	Fail = errCallback( "lookup the server's ID" );
+	end,
+	Fail = errCallback( "lookup the server's ID" ),
 });
 queries["Select Admin Groups"]:SetCallbacks({
 	Done = function( data )
@@ -264,8 +264,8 @@ queries["Select Admin Groups"]:SetCallbacks({
 		queries["Select Admins"]
 			:Prepare( config.dbprefix, config.dbprefix, config.serverid )
 			:Run()
-	end;
-	Fail = errCallback( "load admin groups" );
+	end,
+	Fail = errCallback( "load admin groups" ),
 });
 queries["Select Admins"]:SetCallbacks({
 	Done = function()
@@ -280,7 +280,7 @@ queries["Select Admins"]:SetCallbacks({
 				notifymessage( ply:Name() .. " is now a " .. info.srv_group .. "!" );
 			end
 		end
-	end;
+	end,
 	Data = function( data )
 		data.srv_group = data.srv_group or "NO GROUP ASSIGNED";
 		data.srv_flags = data.srv_flags or "";
@@ -297,17 +297,17 @@ queries["Select Admins"]:SetCallbacks({
 		admins[data.authid] = data;
 		adminsByID[data.aid] = data;
 		notifymessage( "Loaded admin ", data.user, " with group ", tostring( data.srv_group ), "." );
-	end;
-	Fail = errCallback( "load admins" );
+	end,
+	Fail = errCallback( "load admins" ),
 });
 queries["Ban Player"]:SetCallbacks( {
-	Fail = errCallback( "Ban %s" );
+	Fail = errCallback( "Ban %s" ),
 } );
 queries["Unban SteamID"]:SetCallbacks({
-	Fail = errCallback( "Unban SteamID %s" );
+	Fail = errCallback( "Unban SteamID %s" ),
 });
 queries["Unban IPAddress"]:SetCallbacks({
-	Fail = errCallback( "Unban IP %s" );
+	Fail = errCallback( "Unban IP %s" ),
 });
 
 --[[ Query Functions ]]--
@@ -428,15 +428,15 @@ local function activeBansDataTransform( results )
 		end
 
 		ret[#ret + 1] = {
-			IPAddress   = data.ip;
-			SteamID     = data.authid;
-			Name        = data.name;
-			BanStart    = data.created;
-			BanEnd      = data.ends;
-			BanLength   = data.length;
-			BanReason   = data.reason;
-			AdminName   = adminName;
-			AdminID     = adminID;
+			IPAddress   = data.ip,
+			SteamID     = data.authid,
+			Name        = data.name,
+			BanStart    = data.created,
+			BanEnd      = data.ends,
+			BanLength   = data.length,
+			BanReason   = data.reason,
+			AdminName   = adminName,
+			AdminID     = adminID,
 		}
 	end
 	return ret;
@@ -738,13 +738,13 @@ function GetAdmins()
 	local ret = {}
 	for id,data in pairs( admins ) do
 		ret[id] = {
-			Name = data.user;
-			SteamID = id;
-			UserGroup = data.srv_group;
-			AdminID = data.aid;
-			Flags = data.srv_flags;
-			ZFlagged = data.zflag;
-			Immunity = data.immunity;
+			Name = data.user,
+			SteamID = id,
+			UserGroup = data.srv_group,
+			AdminID = data.aid,
+			Flags = data.srv_flags,
+			ZFlagged = data.zflag,
+			Immunity = data.immunity,
 		}
 	end
 	return ret;

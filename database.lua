@@ -169,7 +169,7 @@ function Database:PrepareQuery( text )
 	return new( PreparedQuery, {
 		Text    = text,
 		DB      = self,
-		NumArgs = narg;
+		NumArgs = narg,
 	} );
 end
 
@@ -326,13 +326,13 @@ end
 -- The module's main function - Creates and returns a new database object
 -- @usage <pre>
 -- local db = database.NewDatabase( { <br />
--- &nbsp&nbsp; Hostname = "localhost"; -- Where to find the MySQL server <br />
--- &nbsp&nbsp; Username = "root"; -- Who to log in as <br />
--- &nbsp&nbsp; Password = "top secret password"; -- The user's password <br />
--- &nbsp&nbsp; Database = "gmod"; -- The database to work in <br />
--- &nbsp&nbsp; Port = 3306; -- [Optional] The port to connect to the server on <br />
--- &nbsp&nbsp; EnableSQLite = false; -- [Optional] If the server's local SQLite db is an acceptable 'MySQL server'. <br />
--- &nbsp&nbsp; DBMethod = false; -- [Optional] Override the automatic module checker <br />
+-- &nbsp&nbsp; Hostname = "localhost", -- Where to find the MySQL server <br />
+-- &nbsp&nbsp; Username = "root", -- Who to log in as <br />
+-- &nbsp&nbsp; Password = "top secret password", -- The user's password <br />
+-- &nbsp&nbsp; Database = "gmod", -- The database to work in <br />
+-- &nbsp&nbsp; Port = 3306, -- [Optional] The port to connect to the server on <br />
+-- &nbsp&nbsp; EnableSQLite = false, -- [Optional] If the server's local SQLite db is an acceptable 'MySQL server'. <br />
+-- &nbsp&nbsp; DBMethod = false, -- [Optional] Override the automatic module checker <br />
 -- } ); <br />
 -- db:Connect() -- Returns a promise object <br />
 -- &nbsp;&nbsp; :Done( function() end ) -- DB Connected <br />

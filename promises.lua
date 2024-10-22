@@ -92,7 +92,7 @@ end
 --- @field package _alwys ThenCallback[]
 --- @field package _errs ThenCallback[]
 local Promise = {
-	_IsPromise = true;
+	_IsPromise = true,
 }
 
 
@@ -278,8 +278,8 @@ end;
 --- @field package _promise Promise
 --- @field package _IsDeferred boolean
 Deferred = {
-	_IsDeferred = true;
-	_IsPromise = true;
+	_IsDeferred = true,
+	_IsPromise = true,
 };
 -- Proxies
 Deferred.Then = function( self, ... ) return self._promise:Then( ... ); end;

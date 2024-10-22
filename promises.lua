@@ -1,7 +1,19 @@
 --[[
 	promises.lua
-	Copyright (c) 2013-2014 Lex Robinson
-	This code is freely available under the MIT License
+	Copyright (c) 2013 Lexi Robinson
+
+	This module is free software: you can redistribute it and/or modify it under
+	the terms of the GNU Lesser General Public License as published by the Free
+	Software Foundation, either version 3 of the License, or (at your option)
+	any later version.
+
+	This module is distributed in the hope that it will be useful, but WITHOUT
+	ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+	FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+	for more details.
+
+	You should have received a copy of the GNU Lesser General Public License
+	along with this module. If not, see <https://www.gnu.org/licenses/>.
 --]]
 
 local setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHalt =
@@ -11,8 +23,8 @@ local setmetatable, pcall, table, pairs, error, type, unpack, ipairs, ErrorNoHal
 -- This module is a pure Lua implementation of the CommonJS Promises/A spec, using a basic version of jQuery's interface.
 -- It returns a single function, Deferred.
 -- @module promises
--- @author Lex Robinson - lexi at lexi dot org dot uk
--- @copyright 2013-2014 Lex Robinson - This code is released under the MIT License
+-- @author Lexi Robinson - lexi at lexi dot org dot uk
+-- @copyright 2013 Lexi Robinson - Relased under the LGPLv3 License
 -- @release 1.1.0
 -- <!--
 --[[ goddamnit luadoc -->

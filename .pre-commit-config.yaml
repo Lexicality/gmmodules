@@ -1,0 +1,17 @@
+# Copyright 2024 Lexi Robinson
+# Licensed under the LGPLv3
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-illegal-windows-names
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+      - id: trailing-whitespace

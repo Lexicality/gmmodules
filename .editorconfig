@@ -20,3 +20,30 @@ indent_style = space
 indent_size = 2
 indent_style = space
 trim_trailing_whitespace = false
+
+[*.lua]
+# EmmyLuaCodeStyle config
+
+# Highly changable personal vibes
+call_arg_parentheses = keep
+# unfortunately this plugin takes "every statement should end with semicolon" to
+# the joke level extreme and slaps a semicolon in literally every place that
+# wouldn't cause a syntax error, resulting in very silly code, so we'll have to stick with manual semicor
+end_statement_with_semicolon = same_line
+
+quote_style = double
+trailing_table_separator = smart
+
+# sorry glua code style
+space_inside_function_call_parentheses = false
+space_inside_function_param_list_parentheses = false
+space_inside_square_brackets = false
+space_around_table_field_list = true
+
+# Death to python style arg alignment
+align_call_args = false
+align_function_params = false
+
+# Joy to property alignment though
+align_continuous_assign_statement = true
+align_continuous_rect_table_field = true

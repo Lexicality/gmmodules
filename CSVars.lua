@@ -19,27 +19,29 @@
 -- Server functions
 local umsg, pairs, error, SERVER, tostring = umsg, pairs, error, SERVER, tostring
 -- Client functions
-local ErrorNoHalt, pcall, usermessage = ErrorNoHalt, pcall, usermessage
+local ErrorNoHalt, pcall, usermessage      = ErrorNoHalt, pcall, usermessage
+
+
 -- Enums
-CLASS_STRING    = 1
-CLASS_LONG      = 2
-CLASS_SHORT     = 3
-CLASS_BOOL      = 4
-CLASS_VECTOR    = 5
-CLASS_ENTITY    = 6
-CLASS_ANGLE     = 7
-CLASS_CHAR      = 8
-CLASS_FLOAT     = 9
+CLASS_STRING = 1
+CLASS_LONG   = 2
+CLASS_SHORT  = 3
+CLASS_BOOL   = 4
+CLASS_VECTOR = 5
+CLASS_ENTITY = 6
+CLASS_ANGLE  = 7
+CLASS_CHAR   = 8
+CLASS_FLOAT  = 9
 -- locals
-local c_str = CLASS_STRING
-local c_lng = CLASS_LONG
-local c_srt = CLASS_SHORT
-local c_bln = CLASS_BOOL
-local c_vec = CLASS_VECTOR
-local c_ent = CLASS_ENTITY
-local c_ang = CLASS_ANGLE
-local c_chr = CLASS_CHAR
-local c_flt = CLASS_FLOAT
+local c_str  = CLASS_STRING
+local c_lng  = CLASS_LONG
+local c_srt  = CLASS_SHORT
+local c_bln  = CLASS_BOOL
+local c_vec  = CLASS_VECTOR
+local c_ent  = CLASS_ENTITY
+local c_ang  = CLASS_ANGLE
+local c_chr  = CLASS_CHAR
+local c_flt  = CLASS_FLOAT
 
 if (CLIENT) then
 	hook.Add("LocalPlayerCreated", "CSVars Startup", function(ply)
@@ -68,13 +70,13 @@ local inverted = {
 if (SERVER) then
 	local function handle(ply, class, key, value)
 		umsg.Start("CSVar", ply)
-			umsg.Char(class)
-			umsg.String(key)
-			local name = inverted[class]
-			if (not name) then
-				error("Unknown class '" .. tostring(class) .. "' for CSVar '" .. key .."'='" .. tostring(value) .."'!", 3)
-			end
-			umsg[name](value)
+		umsg.Char(class)
+		umsg.String(key)
+		local name = inverted[class]
+		if (not name) then
+			error("Unknown class '" .. tostring(class) .. "' for CSVar '" .. key .. "'='" .. tostring(value) .. "'!", 3)
+		end
+		umsg[name](value)
 		umsg.End()
 	end
 
@@ -85,9 +87,9 @@ if (SERVER) then
 	-- @param key The name of the variable to set on the client
 	-- @param value The value to set
 	function SetPlayer(ply, class, key, value)
-	if (ply.CSVars[key] == nil or ply.CSVars[key] ~= value) then
-		ply.CSVars[key] = value
-		handle(ply, class, key, value)
+		if (ply.CSVars[key] == nil or ply.CSVars[key] ~= value) then
+			ply.CSVars[key] = value
+			handle(ply, class, key, value)
 		end
 	end
 
@@ -102,8 +104,6 @@ if (SERVER) then
 			ply.CSVars[key] = value
 		end
 	end
-
-
 else
 	vars = {}
 	local hooks = {}
@@ -127,13 +127,14 @@ else
 			hooks[key][name] = nil
 		end
 	end
+
 	local function singleVar(msg)
 		local class = msg:ReadChar()
 		local key = msg:ReadString()
 
 		local name = inverted[class]
 		if (not name) then
-			ErrorNoHalt("Unknown class sent for CSVar '",key,"': ", class, "!")
+			ErrorNoHalt("Unknown class sent for CSVar '", key, "': ", class, "!")
 			return
 		end
 		local var = msg["Read" .. name](msg)

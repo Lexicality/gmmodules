@@ -24,7 +24,7 @@ local database = require "database"
 local drivers = require "database_drivers"
 
 
-local Deferred = require 'promises'
+local Deferred = require "promises"
 
 local mockDB = {
 	["Connect"] = function(self)
@@ -64,7 +64,7 @@ local emptyDB = {
 }
 
 -- safety
-local function copy( tab )
+local function copy(tab)
 	local new = {}
 	for k, v in pairs(tab) do
 		new[k] = v
@@ -80,31 +80,31 @@ end
 -- Tests of internal functions
 describe("_new", function()
 	it("should not return the actual table passed", function()
-		local value = { a = 1}
-		assert.are_not.equal( value, database._new(value) )
+		local value = { a = 1 }
+		assert.are_not.equal(value, database._new(value))
 	end)
 	it("should return an instance of the passed table", function()
 		local value = { a = 1, b = 2, c = { d = 4 } }
-		local inst = database._new( value )
-		for k, v in pairs( value ) do
+		local inst = database._new(value)
+		for k, v in pairs(value) do
 			assert.are.equal(inst[k], v)
 		end
 		inst.e = 5
-		assert.is_nil( value.e )
+		assert.is_nil(value.e)
 	end)
 	it("should call the Init function if available", function()
 		local value = { Init = spy.new(function() end) }
 		local one, two = "one", "two"
-		local inst = database._new( value, one, two )
+		local inst = database._new(value, one, two)
 		assert.spy(value.Init).was.called(1)
-		assert.spy(value.Init).was.called_with( inst, one, two )
+		assert.spy(value.Init).was.called_with(inst, one, two)
 	end)
 end)
 
 describe("_bind", function()
 	it("should do nothing if passed nothing", function()
 		local res = database._bind()
-		assert.is_nil( res )
+		assert.is_nil(res)
 	end)
 	it("should do nothing if not passed a self", function()
 		local function func() end
@@ -128,7 +128,7 @@ describe("_bindCArgs", function()
 	it("should return a function that unpacks the passed arugments into it as the second arguments", function()
 		local func = spy.new(function() end)
 		local one, two, three, four = "one", "two", "three", "four"
-		local func2 = database._bindCArgs(func, {two, three})
+		local func2 = database._bindCArgs(func, { two, three })
 		assert.are_not.equal(func, func2)
 		func2(one, four)
 		assert.spy(func).was.called(1)
@@ -138,7 +138,7 @@ end)
 
 describe("_checkmodule", function()
 	it("should not do anything outside of Garry's Mod", function()
-		assert.is_false( drivers._checkmodule('tmysql') )
+		assert.is_false(drivers._checkmodule("tmysql"))
 	end)
 	-- This needs heavy mocking to work
 	-- describe("in a faked environment", function()
@@ -156,22 +156,25 @@ describe("NewDatabase", function()
 		assert.has.errors(function() database.NewDatabase(false); end)
 		function checkErrors(...)
 			local tab = {}
-			for _, name in pairs{...} do
+			for _, name in pairs { ... } do
 				tab[name] = ""
 			end
 			assert.has.errors(function() database.NewDatabase(tab); end)
 		end
+
 		checkErrors("Hostname")
 		checkErrors("Hostname", "Username")
 		checkErrors("Hostname", "Username", "Password")
 		checkErrors("Hostname", "Username", "Database")
-		assert.has.errors(function() database.NewDatabase({
-			Username = "",
-			Hostname = "",
-			Password = "",
-			Database = "",
-			Port = "Hi!",
-		}) end)
+		assert.has.errors(function()
+			database.NewDatabase({
+				Username = "",
+				Hostname = "",
+				Password = "",
+				Database = "",
+				Port = "Hi!",
+			})
+		end)
 	end)
 	it("Should return an objet", function()
 		assert.is_table(database.NewDatabase({
@@ -192,11 +195,11 @@ describe("FindFirstAvailableDBMethod", function()
 		assert.is_false(database.FindFirstAvailableDBMethod())
 	end)
 	it("Should return SQLite if you ask for it", function()
-		assert.is.equal(database.FindFirstAvailableDBMethod(true), 'sqlite')
+		assert.is.equal(database.FindFirstAvailableDBMethod(true), "sqlite")
 	end)
 	it("Should return the mock db method when available", function()
 		database.RegisterDBMethod("Mock", mockDB)
-		assert.is.equal(database.FindFirstAvailableDBMethod(), 'mock')
+		assert.is.equal(database.FindFirstAvailableDBMethod(), "mock")
 		database.RegisterDBMethod("Mock", invalidDB)
 		assert.is_false(database.FindFirstAvailableDBMethod())
 	end)
@@ -204,7 +207,7 @@ describe("FindFirstAvailableDBMethod", function()
 		database.RegisterDBMethod("Mock", mockDB)
 		spy.on(mockDB, "CanSelect")
 		assert.is_true(database.IsValidDBMethod("Mock"))
-		assert.is.equal(database.FindFirstAvailableDBMethod(), 'mock')
+		assert.is.equal(database.FindFirstAvailableDBMethod(), "mock")
 		assert.spy(mockDB.CanSelect).was.called()
 		mockDB.CanSelect:revert()
 		database.RegisterDBMethod("Mock", invalidDB)
@@ -253,11 +256,12 @@ describe("RegisterDBMethod", function()
 		assert.has.errors(function() database.RegisterDBMethod("", {}); end)
 		function checkErrors(...)
 			local tab = {}
-			for _, name in pairs{...} do
-				tab[name] =  function() end
+			for _, name in pairs { ... } do
+				tab[name] = function() end
 			end
 			assert.has.errors(function() database.RegisterDBMethod("", tab); end)
 		end
+
 		checkErrors("Connect")
 		checkErrors("Connect", "Disconnect")
 		checkErrors("Connect", "Disconnect", "IsConnected")
@@ -446,7 +450,6 @@ describe("Database", function()
 	end)
 
 	describe(":Escape", function()
-
 		it("causes an error on a non-connected database", function()
 			assert.has_errors(function() db:Escape("foobar") end)
 		end)
@@ -454,8 +457,8 @@ describe("Database", function()
 			db:Connect()
 			local value = "foobar"
 			db:Escape(value)
-			assert.spy( mockObj.Escape ).was.called(1)
-			assert.spy( mockObj.Escape ).was.called_with( mockObj, value )
+			assert.spy(mockObj.Escape).was.called(1)
+			assert.spy(mockObj.Escape).was.called_with(mockObj, value)
 		end)
 		it("returns the db method's responses", function()
 			local value, response = "foobar", "barfoo"
@@ -513,23 +516,23 @@ describe("Database", function()
 			constub = nil
 		end)
 		it("overrides connection parameters", function()
-			local newval = 'foobar'
-			db:SetConnectionParameter('Hostname', newval)
+			local newval = "foobar"
+			db:SetConnectionParameter("Hostname", newval)
 			db:Connect()
 			assert.spy(constub).was.called_with(newval)
 			assert.spy(constub).was_not.called_with(orighost)
 		end)
 		it("does nothing to active connections", function()
-			local newval = 'foobar'
+			local newval = "foobar"
 			db:Connect()
-			db:SetConnectionParameter('Hostname', newval)
+			db:SetConnectionParameter("Hostname", newval)
 			assert.spy(constub).was_not.called_with(newval)
 			assert.spy(constub).was.called_with(orighost)
 		end)
 		it("sets the parameters for the next Connect call", function()
-			local newval = 'foobar'
+			local newval = "foobar"
 			db:Connect()
-			db:SetConnectionParameter('Hostname', newval)
+			db:SetConnectionParameter("Hostname", newval)
 			db:Connect()
 			assert.spy(constub).was.called_with(newval)
 		end)
@@ -573,7 +576,7 @@ describe("PreparedQuery", function()
 			query:SetCallbacks({
 				Done = done,
 				Fail = fail,
-				Progress = prog
+				Progress = prog,
 			})
 		end)
 		after_each(function()
@@ -617,7 +620,7 @@ describe("PreparedQuery", function()
 			end
 			local newdone = stub()
 			query:SetCallbacks({
-				Done = newdone
+				Done = newdone,
 			})
 			query:Run()
 			assert.spy(done).was_not.called()
@@ -629,7 +632,7 @@ describe("PreparedQuery", function()
 				def:Resolve(two)
 			end
 			query:SetCallbacks({
-				Done = done
+				Done = done,
 			}, one)
 			query:Run()
 			assert.spy(done).was.called(1)
@@ -640,49 +643,49 @@ describe("PreparedQuery", function()
 				query:SetCallbacks({
 					Done = nil,
 					Fail = fail,
-					Progress = prog
+					Progress = prog,
 				})
 			end)
 			assert.has_no.errors(function()
 				query:SetCallbacks({
 					Done = done,
 					Fail = nil,
-					Progress = prog
+					Progress = prog,
 				})
 			end)
 			assert.has_no.errors(function()
 				query:SetCallbacks({
 					Done = done,
 					Fail = fail,
-					Progress = nil
+					Progress = nil,
 				})
 			end)
 			assert.has_no.errors(function()
 				query:SetCallbacks({
 					Done = done,
 					Fail = nil,
-					Progress = nil
+					Progress = nil,
 				})
 			end)
 			assert.has_no.errors(function()
 				query:SetCallbacks({
 					Done = nil,
 					Fail = fail,
-					Progress = nil
+					Progress = nil,
 				})
 			end)
 			assert.has_no.errors(function()
 				query:SetCallbacks({
 					Done = nil,
 					Fail = nil,
-					Progress = prog
+					Progress = prog,
 				})
 			end)
 			assert.has_no.errors(function()
 				query:SetCallbacks({
 					Done = done,
 					Fail = nil,
-					Progress = prog
+					Progress = prog,
 				})
 			end)
 		end)
@@ -693,7 +696,7 @@ describe("PreparedQuery", function()
 			query:SetCallbacks({
 				Done = nil,
 				Fail = fail,
-				Progress = prog
+				Progress = prog,
 			})
 			query:Run()
 			assert.spy(done).was_not.called()
@@ -708,7 +711,7 @@ describe("PreparedQuery", function()
 			query:SetCallbacks({
 				Done = done,
 				Fail = fail,
-				Progress = prog
+				Progress = prog,
 			})
 			queryFunc = function(def)
 				def:Resolve(one)
@@ -770,7 +773,7 @@ describe("PreparedQuery", function()
 	describe(":Prepare", function()
 		local one, two, three = "one", "two", "three"
 		it("does nothing if the query has no placeholders", function()
-			local qtext = 'my prepared query'
+			local qtext = "my prepared query"
 			local query = db:PrepareQuery(qtext)
 			query:Prepare(one, two)
 			query:Run()

@@ -32,11 +32,11 @@ local error, tonumber, math, string = error, tonumber, math, string
 module("time")
 
 -- Unit Definitions
-YEAR    = 31556926
-WEEK    = 604800
-DAY     = 86400
-HOUR    = 3600
-MINUTE  = 60
+YEAR   = 31556926
+WEEK   = 604800
+DAY    = 86400
+HOUR   = 3600
+MINUTE = 60
 
 ---
 -- Converts time of one unit to seconds
@@ -77,18 +77,18 @@ function TimestringToSeconds(str)
 		return 0
 	end
 	local years, weeks, days, hours, mins, secs
-	years = tonumber(string.match(str,"(%d+)%s?y")) or 0
-	weeks = tonumber(string.match(str,"(%d+)%s?w")) or 0
-	days  = tonumber(string.match(str,"(%d+)%s?d")) or 0
-	hours = tonumber(string.match(str,"(%d+)%s?h")) or 0
-	mins  = tonumber(string.match(str,"(%d+)%s?m")) or 0
-	secs  = tonumber(string.match(str,"(%d+)%s?s")) or 0
-	return  secs +
-			mins  * MINUTE +
-			hours * HOUR   +
-			days  * DAY    +
-			weeks * WEEK   +
-			years * YEAR
+	years = tonumber(string.match(str, "(%d+)%s?y")) or 0
+	weeks = tonumber(string.match(str, "(%d+)%s?w")) or 0
+	days  = tonumber(string.match(str, "(%d+)%s?d")) or 0
+	hours = tonumber(string.match(str, "(%d+)%s?h")) or 0
+	mins  = tonumber(string.match(str, "(%d+)%s?m")) or 0
+	secs  = tonumber(string.match(str, "(%d+)%s?s")) or 0
+	return secs +
+		mins * MINUTE +
+		hours * HOUR +
+		days * DAY +
+		weeks * WEEK +
+		years * YEAR
 end
 
 ---
@@ -115,15 +115,20 @@ function SecondsToTimestring(time)
 	local str = ""
 	if (years > 0) then
 		str = str .. years .. "y"
-	end if (weeks > 0) then
+	end
+	if (weeks > 0) then
 		str = str .. weeks .. "w"
-	end if (days > 0) then
+	end
+	if (days > 0) then
 		str = str .. days .. "d"
-	end if (hours > 0) then
+	end
+	if (hours > 0) then
 		str = str .. hours .. "h"
-	end if (minutes > 0) then
+	end
+	if (minutes > 0) then
 		str = str .. minutes .. "m"
-	end if (seconds > 0) then
+	end
+	if (seconds > 0) then
 		str = str .. seconds .. "s"
 	end
 	return str

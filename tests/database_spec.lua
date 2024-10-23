@@ -22,8 +22,6 @@ _G._TEST = true
 
 local database = require "database"
 local drivers = require "database_drivers"
-
-
 local Deferred = require "promises"
 
 local mockDB = {
@@ -75,6 +73,16 @@ end
 -- Stubs are tables and tables can't go into then
 local function thenable(a)
 	return function(...) return a(...) end
+end
+
+local function setupMockDriver()
+	database.RegisterDBMethod("Mock", mockDB)
+end
+
+local function clearDrivers()
+	for key, _ in pairs(database._registeredDatabaseMethods) do
+		database._registeredDatabaseMethods[key] = nil
+	end
 end
 
 -- Tests of internal functions
@@ -188,9 +196,12 @@ end)
 
 
 describe("FindFirstAvailableDBMethod", function()
-	-- These test assumes that all the default methods will be
-	--  unavailable to start off with. This is a ~farily~ reasonable
-	--  assumption, given they're glua specific.
+	before_each(function()
+		local _mocksqlite = copy(mockDB)
+		database.RegisterDBMethod("SQLite", _mocksqlite)
+	end)
+	after_each(clearDrivers)
+
 	it("Should return false if nothing is available", function()
 		assert.is_false(database.FindFirstAvailableDBMethod())
 	end)
@@ -210,17 +221,12 @@ describe("FindFirstAvailableDBMethod", function()
 		assert.is.equal(database.FindFirstAvailableDBMethod(), "mock")
 		assert.spy(mockDB.CanSelect).was.called()
 		mockDB.CanSelect:revert()
-		database.RegisterDBMethod("Mock", invalidDB)
 	end)
 end)
 
 describe("GetNewDBMethod", function()
-	setup(function()
-		database.RegisterDBMethod("Mock", mockDB)
-	end)
-	teardown(function()
-		database.RegisterDBMethod("Mock", invalidDB)
-	end)
+	before_each(setupMockDriver)
+	after_each(clearDrivers)
 
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.GetNewDBMethod(); end)
@@ -245,10 +251,8 @@ describe("GetNewDBMethod", function()
 end)
 
 describe("RegisterDBMethod", function()
-	teardown(function()
-		database.RegisterDBMethod("arg_test", invalidDB)
-		database.RegisterDBMethod("overwrite_test", invalidDB)
-	end)
+	after_each(clearDrivers)
+
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.RegisterDBMethod(); end)
 		assert.has.errors(function() database.RegisterDBMethod({}); end)
@@ -285,12 +289,9 @@ describe("RegisterDBMethod", function()
 end)
 
 describe("IsValidDBMethod", function()
-	setup(function()
-		database.RegisterDBMethod("Mock", mockDB)
-	end)
-	teardown(function()
-		database.RegisterDBMethod("Mock", invalidDB)
-	end)
+	before_each(setupMockDriver)
+	after_each(clearDrivers)
+
 	it("errors if not passed anything", function()
 		assert.has.errors(function() database.IsValidDBMethod() end)
 	end)
@@ -315,12 +316,9 @@ describe("IsValidDBMethod", function()
 end)
 
 describe("GetDBMethod", function()
-	setup(function()
-		database.RegisterDBMethod("Mock", mockDB)
-	end)
-	teardown(function()
-		database.RegisterDBMethod("Mock", invalidDB)
-	end)
+	before_each(setupMockDriver)
+	after_each(clearDrivers)
+
 	it("should be picky about its arguments", function()
 		assert.has.errors(function() database.GetDBMethod(); end)
 	end)
@@ -353,7 +351,7 @@ describe("Database", function()
 		cparams = nil
 		db = nil
 		mockObj = nil
-		database.RegisterDBMethod("Mock", invalidDB)
+		clearDrivers()
 	end)
 	describe(":Connect", function()
 		it("Should default to the only available method", function()
@@ -364,13 +362,6 @@ describe("Database", function()
 		end)
 
 		it("Should use the requested method", function()
-			-- Teardown
-			finally(function()
-				database.RegisterDBMethod("Mock 1", invalidDB)
-				database.RegisterDBMethod("Mock 2", invalidDB)
-				database.RegisterDBMethod("Mock 3", invalidDB)
-			end)
-
 			-- Setup
 			local mockObj1 = mock(copy(mockDB))
 			local mockObj2 = mock(copy(mockDB))
@@ -566,7 +557,7 @@ describe("PreparedQuery", function()
 		cparams = nil
 		db = nil
 		mockObj = nil
-		database.RegisterDBMethod("Mock", invalidDB)
+		clearDrivers()
 	end)
 	describe(":SetCallbacks", function()
 		local done, fail, prog, query

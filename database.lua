@@ -23,7 +23,7 @@ local error, type, unpack, pairs, tonumber, setmetatable, require, string =
 -- GLua
 local ErrorNoHalt = ErrorNoHalt
 
-if (not ErrorNoHalt) then
+if not ErrorNoHalt then
 	ErrorNoHalt = function(...)
 		print("[ERROR]", ...)
 	end
@@ -75,7 +75,7 @@ local PreparedQuery = {}
 --- @return any ye new object
 local function new(tab, ...)
 	local ret = setmetatable({}, { __index = tab })
-	if (ret.Init) then
+	if ret.Init then
 		ret:Init(...)
 	end
 	return ret
@@ -88,9 +88,9 @@ end
 --- @return fun( ... ) #return func( self, ... ) end
 --- @overload fun(func: nil, v:any): nil
 local function bind(func, self)
-	if (not func) then
+	if not func then
 		return
-	elseif (self) then
+	elseif self then
 		return function(...) return func(self, ...); end
 	else
 		return func
@@ -139,7 +139,7 @@ end
 --- @param text string The query to run
 --- @return Promise #A promise object for the query's result
 function Database:Query(text)
-	if (not self:IsConnected()) then
+	if not self:IsConnected() then
 		error("Cannot query a non-connected database!", 2)
 	end
 	return self._db:Query(text):Fail(queryFail)
@@ -150,7 +150,7 @@ end
 --- @return DatabasePreparedQuery A prepared query object
 --- @see PreparedQuery
 function Database:PrepareQuery(text)
-	if (not text) then
+	if not text then
 		error("No query text specified!", 2)
 	end
 	local _, narg = string.gsub(string.gsub(text, "%%%%", ""), "(%%[diouXxfFeEgGaAcsb])", "")
@@ -218,7 +218,7 @@ end
 --- @param ... any The arguments to be unpacked after the result
 function PreparedQuery:SetCallbackArgs(...)
 	self._callbackArgs = { ... }
-	if (#self._callbackArgs == 0) then
+	if #self._callbackArgs == 0 then
 		self._callbackArgs = nil
 	end
 	return self
@@ -227,13 +227,13 @@ end
 --- Prepares the query for the next invocation.
 --- @param ... any The arguments to escape and sprintf into the query
 function PreparedQuery:Prepare(...)
-	if (self.NumArgs == 0) then
+	if self.NumArgs == 0 then
 		return
 	end
 	self._preped = true
 	local args = { ... }
 	local nargs = #args
-	if (nargs < self.NumArgs) then
+	if nargs < self.NumArgs then
 		error("Argument count missmatch! Expected " .. self.NumArgs .. " but only received " .. nargs .. "!", 2)
 	end
 	for i, arg in pairs(args) do
@@ -244,7 +244,7 @@ function PreparedQuery:Prepare(...)
 end
 
 local function bindCArgs(func, cargs)
-	if (not cargs) then
+	if not cargs then
 		return func
 	else
 		return function(res)
@@ -256,13 +256,13 @@ end
 --- Run a prepared query (and then reset it so it can be re-prepared with new data)
 --- @return Promise #A promise object for the query's data
 function PreparedQuery:Run()
-	if (not self._db:IsConnected()) then
+	if not self._db:IsConnected() then
 		error("Cannot execute query without a database!", 2)
 	end
 	local text
-	if (self.NumArgs == 0) then
+	if self.NumArgs == 0 then
 		text = self.Text
-	elseif (not self._preped) then
+	elseif not self._preped then
 		error("Tried to run an unprepared query!", 2)
 	else
 		text = self._prepedText
@@ -271,13 +271,13 @@ function PreparedQuery:Run()
 	local p = self._db:Query(text)
 	-- Deal w/ callbacks
 	local _ca = self._callbackArgs
-	if (self._cDone) then
+	if self._cDone then
 		p:Done(bindCArgs(self._cDone, _ca))
 	end
-	if (self._cFail) then
+	if self._cFail then
 		p:Fail(bindCArgs(self._cFail, _ca))
 	end
-	if (self._cProg) then
+	if self._cProg then
 		p:Progress(bindCArgs(self._cProg, _ca))
 	end
 	-- Reset state
@@ -306,7 +306,7 @@ local function findFirstAvailableDBMethod(enable_sqlite)
 end
 
 local function req(tab, name)
-	if (not tab[name]) then
+	if not tab[name] then
 		error("You're missing '" .. name .. "' from the connection parameters!", 3)
 	end
 end
@@ -330,7 +330,7 @@ end
 --- @param connection DatabaseConnectionInfo A table composed of the following fields:
 --- @return Database #A Database object
 function database.NewDatabase(connection)
-	if (type(connection) ~= "table") then
+	if type(connection) ~= "table" then
 		error("Invalid connection data passed!", 2)
 	end
 	req(connection, "Hostname")
@@ -362,14 +362,14 @@ end
 --- @return DatabaseDriver  #An instance if it worked, false and an error message if it didn't
 function database.GetNewDBMethod(name)
 	local s, e = database.IsValidDBMethod(name)
-	if (not s) then
+	if not s then
 		error("Cannot use database method '" .. name .. "': " .. e, 2)
 	end
 	return new(database.GetDBMethod(name))
 end
 
 local function req(tab, name)
-	if (not tab[name]) then
+	if not tab[name] then
 		error("You're missing '" .. name .. "' from the database methods!", 3)
 	end
 end
@@ -388,7 +388,7 @@ function database.RegisterDBMethod(tab)
 end
 
 -- Expose our privates for dr test
-if (_TEST) then
+if _TEST then
 	database._registeredDatabaseMethods = registeredDatabaseMethods
 	database._findFirstAvailableDBMethod = findFirstAvailableDBMethod
 	database._Database = Database

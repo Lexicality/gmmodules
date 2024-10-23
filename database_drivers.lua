@@ -39,25 +39,25 @@ local drivers = {}
 
 local function checkmodule(name)
 	-- Not in Garry's Mod
-	if (not system) then return false; end
+	if not system then return false; end
 	local prefix = (SERVER) and "gmsv" or "gmcl"
 	local suffix
-	if (system.IsWindows()) then
+	if system.IsWindows() then
 		suffix = "win32"
-	elseif (system.IsLinux()) then
+	elseif system.IsLinux() then
 		suffix = "linux"
-	elseif (system.IsOSX()) then
+	elseif system.IsOSX() then
 		suffix = "osx"
 	else
 		ErrorNoHalt("Unknown system!")
 		return false
 	end
-	if (file.Exists("lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll", "GAME")) then
+	if file.Exists("lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll", "GAME") then
 		return require("lua/bin/" .. prefix .. "_" .. name .. "_" .. suffix .. ".dll")
 	end
 end
 
-if (_TEST) then
+if _TEST then
 	drivers._checkmodule = checkmodule
 end
 
@@ -67,7 +67,7 @@ do -- TMySQL
 	---@param success boolean
 	---@param err? string
 	local function mcallback(deferred, results, success, err)
-		if (success) then
+		if success then
 			for _, result in ipairs(results) do
 				deferred:Notify(result)
 			end
@@ -87,12 +87,12 @@ do -- TMySQL
 	---@return Promise
 	function db:Connect(tab)
 		local deferred = Deferred()
-		if (self._db) then
+		if self._db then
 			self:Disconnect()
 		end
 		local err
 		self._db, err = tmysql.initialize(tab.Hostname, tab.Username, tab.Password, tab.Database, tab.Port)
-		if (self._db) then
+		if self._db then
 			deferred:Resolve(self)
 		else
 			deferred:Reject(string.gsub(err, "^Error connecting to DB: ", ""))
@@ -101,7 +101,7 @@ do -- TMySQL
 	end
 
 	function db:Disconnect()
-		if (self._db) then
+		if self._db then
 			self._db:Disconnect()
 			self._db = nil
 		end
@@ -110,7 +110,7 @@ do -- TMySQL
 	---@param text string
 	---@return Promise
 	function db:Query(text)
-		if (not self._db) then
+		if not self._db then
 			error("Cannot query without a database connected!")
 		end
 		local deferred = Deferred()
@@ -130,7 +130,7 @@ do -- TMySQL
 
 	function db.CanSelect()
 		tmysql = tmysql or checkmodule("tmysql4")
-		if (not tmysql) then
+		if not tmysql then
 			return false, "TMySQL4 is not available!"
 		end
 		return true
@@ -181,7 +181,7 @@ do -- MySQLOO
 	---@param cdata DatabaseConnectionInfo
 	---@return Promise
 	function db:Connect(cdata)
-		if (self._db) then
+		if self._db then
 			self:Disconnect()
 		end
 		return self:_connect(mysqloo.connect(cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port))
@@ -208,7 +208,7 @@ do -- MySQLOO
 	end
 
 	function db:Disconnect()
-		if (self._db) then
+		if self._db then
 			local db = self._db
 			self._db = nil -- Make sure this is nil /FIRST/ so any aborting queries don't try to restart it
 			db:AbortAllQueries()
@@ -220,17 +220,17 @@ do -- MySQLOO
 	---@return Promise
 	function db:qfail(errmsg, text)
 		local deferred = Deferred()
-		if (self._db) then
+		if self._db then
 			local status = self._db:status()
 			-- DB is fine - you just fucked up.
-			if (status == mysqloo.DATABASE_CONNECTED) then
+			if status == mysqloo.DATABASE_CONNECTED then
 				return deferred:Reject(errmsg)
 				-- DB fucked up, whoops
-			elseif (status == mysqloo.DATABASE_INTERNAL_ERROR) then
+			elseif status == mysqloo.DATABASE_INTERNAL_ERROR then
 				ErrorNoHalt("The database has suffered an internal error!\n")
 				self:Connect() -- Full restart the db
 				-- DB timed out
-			elseif (status ~= mysqloo.DATABASE_CONNECTING) then
+			elseif status ~= mysqloo.DATABASE_CONNECTING then
 				local db = self._db
 				self._db = nil
 				timer.Simple(0, function() self:_connect(db); end)
@@ -244,12 +244,12 @@ do -- MySQLOO
 	---@param deferred? Deferred
 	---@return Promise
 	function db:Query(text, deferred)
-		if (not self._db) then
+		if not self._db then
 			error("Cannot query without a database connected!")
 		end
 		deferred = deferred or Deferred()
 		local q = self._db:query(text)
-		if (not q) then
+		if not q then
 			return self:qfail("The DB is not connected!", text)
 		end
 		--- @cast q DatabaseMySQLOOQuery
@@ -267,22 +267,22 @@ do -- MySQLOO
 	---@param text string
 	---@return string
 	function db:Escape(text)
-		if (not self._db) then
+		if not self._db then
 			error("There is no database open to do this!")
 		end
 		return self._db:escape(text)
 	end
 
 	-- function db:IsConnected()
-	--     if ( not self._db ) then
+	--     if not self._db then
 	--         return false
 	--     end
 	--     local status = self._db:status()
-	--     if ( status == mysqloo.DATABASE_CONNECTED ) then
+	--     if status == mysqloo.DATABASE_CONNECTED then
 	--         return true
 	--     end
 	--     connected = false
-	--     if ( status == mysqloo.DATABASE_INTERNAL_ERROR ) then
+	--     if status == mysqloo.DATABASE_INTERNAL_ERROR then
 	--         ErrorNoHalt( "The MySQLOO database has encountered an internal error!\n" )
 	--     end
 	--     return false
@@ -293,7 +293,7 @@ do -- MySQLOO
 
 	function db.CanSelect()
 		mysqloo = mysqloo or checkmodule("mysqloo")
-		if (not mysqloo) then
+		if not mysqloo then
 			return false, "MySQLOO is not available!"
 		end
 		return true
@@ -324,7 +324,7 @@ do -- SQLite
 	function db:Query(text)
 		local deferred = Deferred()
 		local results = sqlite.Query(text)
-		if (results) then
+		if results then
 			for _, result in ipairs(results) do
 				deferred:Notify(result)
 			end

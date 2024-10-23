@@ -46,9 +46,9 @@ _time.MINUTE = 60
 -- @param unit The unit the time is in
 -- @return The time in seconds
 function _time.UnitToSeconds(time, unit)
-	if (not time) then
+	if not time then
 		error("No time specified!", 2)
-	elseif (not (unit and tonumber(unit))) then
+	elseif not (unit and tonumber(unit)) then
 		error("Invalid unit specified!", 2)
 	end
 	return math.floor(time * unit)
@@ -60,9 +60,9 @@ end
 -- @param unit The unit to convert the time to
 -- @return The time in the unit specified
 function _time.SecondsToUnit(time, unit)
-	if (not time) then
+	if not time then
 		error("No time specified!", 2)
-	elseif (not (unit and tonumber(unit))) then
+	elseif not (unit and tonumber(unit)) then
 		error("Invalid unit specified!", 2)
 	end
 	return math.floor(time / unit)
@@ -73,9 +73,9 @@ end
 -- @param str The timestring to converty
 -- @return The specified time
 function _time.TimestringToSeconds(str)
-	if (not str) then
+	if not str then
 		error("No timestring specified!", 2)
-	elseif (str == "") then
+	elseif str == "" then
 		return 0
 	end
 	local years, weeks, days, hours, mins, secs
@@ -98,7 +98,7 @@ end
 -- @param time The time in seconds
 -- @return A human readable timestring
 function _time.SecondsToTimestring(time)
-	if (not time) then
+	if not time then
 		error("No time specified!", 2)
 	end
 	time = math.floor(time)
@@ -115,22 +115,22 @@ function _time.SecondsToTimestring(time)
 	time = time - minutes * _time.MINUTE
 	seconds = time
 	local str = ""
-	if (years > 0) then
+	if years > 0 then
 		str = str .. years .. "y"
 	end
-	if (weeks > 0) then
+	if weeks > 0 then
 		str = str .. weeks .. "w"
 	end
-	if (days > 0) then
+	if days > 0 then
 		str = str .. days .. "d"
 	end
-	if (hours > 0) then
+	if hours > 0 then
 		str = str .. hours .. "h"
 	end
-	if (minutes > 0) then
+	if minutes > 0 then
 		str = str .. minutes .. "m"
 	end
-	if (seconds > 0) then
+	if seconds > 0 then
 		str = str .. seconds .. "s"
 	end
 	return str

@@ -52,9 +52,9 @@ end
 --- @return function # function( ... ) return func( self, ... ) end
 --- @overload fun(func: nil, self: any): nil
 local function bind(func, self)
-	if (not func) then
+	if not func then
 		return
-	elseif (self) then
+	elseif self then
 		return function(...) return func(self, ...); end
 	else
 		return func
@@ -69,7 +69,7 @@ end
 local function pbind(func)
 	return function(...)
 		local r, e = pcall(func, ...)
-		if (not r) then
+		if not r then
 			ErrorNoHalt("Callback failed: ", e, "\n")
 		end
 	end
@@ -110,16 +110,16 @@ local Promise = {
 function Promise:Then(done, fail, prog)
 	--- @type Deferred
 	local def = new(Deferred)
-	if (type(done) == "function") then
+	if type(done) == "function" then
 		local d = done
 		done = function(...)
 			local ret = { pcall(d, ...) }
-			if (not ret[1]) then
+			if not ret[1] then
 				def._promise._errd = true
 				def:Reject(ret[2])
 				return
 			end
-			if (type(ret[2]) == "table" and ret[2]._IsPromise) then
+			if type(ret[2]) == "table" and ret[2]._IsPromise then
 				local r = ret[2]
 				r:Progress(bind(def.Notify, def), true)
 				r:Done(bind(def.Resolve, def), true)
@@ -131,16 +131,16 @@ function Promise:Then(done, fail, prog)
 	else
 		done = function(...) return def:Resolve(...) end
 	end
-	if (type(fail) == "function") then
+	if type(fail) == "function" then
 		local f = fail
 		fail = function(...)
 			local ret = { pcall(f, ...) }
-			if (not ret[1]) then
+			if not ret[1] then
 				def._promise._errd = true
 				def:Reject(ret[2])
 				return
 			end
-			if (type(ret[2]) == "table" and ret[2]._IsPromise) then
+			if type(ret[2]) == "table" and ret[2]._IsPromise then
 				local r = ret[2]
 				r:Progress(bind(def.Notify, def), true)
 				r:Done(bind(def.Resolve, def), true)
@@ -153,11 +153,11 @@ function Promise:Then(done, fail, prog)
 		fail = function(...) return def:Reject(...) end
 	end
 	-- Promises/A barely mentions progress handlers, so I've just made this up.
-	if (type(prog) == "function") then
+	if type(prog) == "function" then
 		local p = prog
 		prog = function(...)
 			local ret = { pcall(p, ...) }
-			if (not ret[1]) then
+			if not ret[1] then
 				ErrorNoHalt("Progress handler failed: ", ret[2], "\n")
 				-- Carry on as if that never happened
 				def:Notify(...)
@@ -180,10 +180,10 @@ end
 --- @param done ThenCallback The handler function
 --- @return self
 function Promise:Done(done, _)
-	if (not _) then
+	if not _ then
 		done = pbind(done)
 	end
-	if (self._state == "done") then
+	if self._state == "done" then
 		done(unpack(self._res))
 	else
 		table.insert(self._dones, done)
@@ -196,10 +196,10 @@ end
 --- @param fail ThenCallback The handler function
 --- @return self
 function Promise:Fail(fail, _)
-	if (not _) then
+	if not _ then
 		fail = pbind(fail)
 	end
-	if (self._state == "fail") then
+	if self._state == "fail" then
 		fail(unpack(self._res))
 	else
 		table.insert(self._fails, fail)
@@ -212,11 +212,11 @@ end
 --- @param prog ThenCallback The handler function
 --- @return self
 function Promise:Progress(prog, _)
-	if (not _) then
+	if not _ then
 		prog = pbind(prog)
 	end
 	table.insert(self._progs, prog)
-	if (self._progd) then
+	if self._progd then
 		for _, d in ipairs(self._progd) do
 			prog(unpack(d))
 		end
@@ -229,11 +229,11 @@ end
 --- @param err ThenCallback The handler function
 --- @return self
 function Promise:Error(err, _)
-	if (not _) then
+	if not _ then
 		err = pbind(err)
 	end
-	if (self._state == "fail") then
-		if (self._errd) then
+	if self._state == "fail" then
+		if self._errd then
 			err(unpack(self._res))
 		end
 	else
@@ -247,10 +247,10 @@ end
 --- @param alwy ThenCallback The handler function
 --- @return self
 function Promise:Always(alwy, _)
-	if (not _) then
+	if not _ then
 		alwy = pbind(alwy)
 	end
-	if (self._state ~= "pending") then
+	if self._state ~= "pending" then
 		alwy(unpack(self._res))
 	else
 		table.insert(self._alwys, alwy)
@@ -309,7 +309,7 @@ end
 --- @return self
 function Deferred:Resolve(...)
 	local p = self._promise
-	if (p._state ~= "pending") then
+	if p._state ~= "pending" then
 		error("Tried to resolve an already " .. (p._state == "done" and "resolved" or "rejected") .. " deferred!", 2)
 	end
 	p._state = "done"
@@ -330,7 +330,7 @@ end
 --- @return self
 function Deferred:Reject(...)
 	local p = self._promise
-	if (p._state ~= "pending") then
+	if p._state ~= "pending" then
 		error("Tried to reject an already " .. (p._state == "done" and "resolved" or "rejected") .. " deferred!", 2)
 	end
 	p._state = "fail"
@@ -338,7 +338,7 @@ function Deferred:Reject(...)
 	for _, f in pairs(p._fails) do
 		f(...)
 	end
-	if (self._promise._errd) then
+	if self._promise._errd then
 		for _, f in pairs(p._errs) do
 			f(...)
 		end
@@ -356,7 +356,7 @@ end
 --- @return self
 function Deferred:Notify(...)
 	local p = self._promise
-	if (p._state ~= "pending") then
+	if p._state ~= "pending" then
 		error("Tried to notify an already " .. (p._state == "done" and "resolved" or "rejected") .. " deferred!", 2)
 	end
 	p._progd = p._progd or {}

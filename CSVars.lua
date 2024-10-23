@@ -62,13 +62,13 @@ local inverted = {
 }
 
 
-if (SERVER) then
+if SERVER then
 	local function handle(ply, class, key, value)
 		umsg.Start("CSVar", ply)
 		umsg.Char(class)
 		umsg.String(key)
 		local name = inverted[class]
-		if (not name) then
+		if not name then
 			error("Unknown class '" .. tostring(class) .. "' for CSVar '" .. key .. "'='" .. tostring(value) .. "'!", 3)
 		end
 		umsg[name](value)
@@ -82,7 +82,7 @@ if (SERVER) then
 	-- @param key The name of the variable to set on the client
 	-- @param value The value to set
 	function CSVars.SetPlayer(ply, class, key, value)
-		if (ply.CSVars[key] == nil or ply.CSVars[key] ~= value) then
+		if ply.CSVars[key] == nil or ply.CSVars[key] ~= value then
 			ply.CSVars[key] = value
 			handle(ply, class, key, value)
 		end
@@ -118,7 +118,7 @@ else
 	-- @param key The name of the CSVar the hook was on on
 	-- @param name The unique name of the hook
 	function CSVars.UnHook(key, name)
-		if (hooks[key] and hooks[key][name]) then
+		if hooks[key] and hooks[key][name] then
 			hooks[key][name] = nil
 		end
 	end
@@ -128,22 +128,22 @@ else
 		local key = msg:ReadString()
 
 		local name = inverted[class]
-		if (not name) then
+		if not name then
 			ErrorNoHalt("Unknown class sent for CSVar '", key, "': ", class, "!")
 			return
 		end
 		local var = msg["Read" .. name](msg)
 		CSVars.vars[key] = var
-		if (hooks[key]) then
+		if hooks[key] then
 			for _, func in pairs(hooks[key]) do
 				local res, err = pcall(func, var, class)
-				if (not res) then
+				if not res then
 					ErrorNoHalt("Error in CSVar hook '", name, "' for '", key, "': ", err)
 				end
 			end
 		end
 		-- Check if the local player is a valid entity.
-		if (lpl ~= NULL) then
+		if lpl ~= NULL then
 			lpl[key] = var
 		end
 	end

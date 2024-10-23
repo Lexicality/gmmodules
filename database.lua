@@ -30,15 +30,13 @@ if (not ErrorNoHalt) then
 end
 
 ---
--- The Universal Database Module is an attempt to provide a single rational interface
---  that allows Developers to run SQL commands without caring which MySQL module the server has installed.
--- It also has client-side prepared queries which is nice.
--- @module database
--- @author Lexi Robinson - lexi at lexi dot org dot uk
--- @copyright 2012 Lexi Robinson - Relased under the LGPLv3 License
--- @release 1.0.0
--- @usage see database.NewDatabase
--- @see NewDatabase
+--- The Universal Database Module is an attempt to provide a single rational interface
+---  that allows Developers to run SQL commands without caring which MySQL module the server has installed.
+--- It also has client-side prepared queries which is nice.
+--- @author Lexi Robinson - lexi at lexi dot org dot uk
+--- @copyright 2012 Lexi Robinson - Relased under the LGPLv3 License
+--- @release 1.0.0
+--- @see database.NewDatabase
 local database = {}
 
 --- @class DatabaseConnectionInfo
@@ -58,24 +56,19 @@ local database = {}
 --- @field IsConnected fun(self): boolean
 --- @field CanSelect fun(self): boolean
 
----
--- The main Database object the developer will generally be interacting with
--- @name Database
--- @class table
--- @see NewDatabase
+--- The main Database object the developer will generally be interacting with
+--- @class Database
 local Database = {}
----
--- A client-side prepared query object.
--- @name PreparedQuery
--- @class table
--- @see Database:PrepareQuery
+
+--- A client-side prepared query object.
+--- @class DatabasePreparedQuery
+--- @see Database.PrepareQuery
 local PreparedQuery = {}
 
---
--- Does a basic form of OO
--- @param tab The metatable to make an object from
--- @param ... Stuff to pass to the ctor (if it exists)
--- @return ye new object
+--- Does a basic form of OO
+--- @param tab table The metatable to make an object from
+--- @param ... any Stuff to pass to the ctor (if it exists)
+--- @return any ye new object
 local function new(tab, ...)
 	local ret = setmetatable({}, { __index = tab })
 	if (ret.Init) then
@@ -83,11 +76,13 @@ local function new(tab, ...)
 	end
 	return ret
 end
---
--- Binds a function's self var
--- @param func The function what needen ze selfen
--- @param self The selfen as above
--- @return function( ... ) return func( self, ... ) end
+
+--- Binds a function's self var
+--- @generic T
+--- @param func fun(T, ...) The function what needen ze selfen
+--- @param self `T`The selfen as above
+--- @return fun( ... ) #return func( self, ... ) end
+--- @overload fun(func: nil, v:any): nil
 local function bind(func, self)
 	if (not func) then
 		return
@@ -102,10 +97,9 @@ end
 -- DBOBJ
 --
 
---
--- CTor. Accepts the variables passed to NewDatabase
--- @see NewDatabase
--- @param tab connection details
+--- CTor. Accepts the variables passed to NewDatabase
+--- @see NewDatabase
+--- @param tab DatabaseConnectionInfo connection details
 function Database:Init(tab)
 	self._conargs = tab
 end
@@ -114,19 +108,17 @@ local function connectionFail(errmsg)
 	ErrorNoHalt("Could not connect to the database: ", errmsg, "\n")
 end
 
----
--- Change a connection param
--- Note that changes will not apply until the next (re)connect
--- @param name The parameter's key (see NewDatabase for keys)
--- @param value The new value to set
+--- Change a connection param
+--- Note that changes will not apply until the next (re)connect
+--- @param name string The parameter's key (see NewDatabase for keys)
+--- @param value any The new value to set
 function Database:SetConnectionParameter(name, value)
 	self._conargs[name] = value
 end
 
----
--- Connects with the stored args
--- @return Promise object for the DB connection
--- @see NewDatabase
+--- Connects with the stored args
+--- @return Promise #object for the DB connection
+--- @see NewDatabase
 function Database:Connect()
 	if (not self._db) then
 		local db = self._conargs.DBMethod
@@ -152,10 +144,9 @@ local function queryFail(errmsg)
 	ErrorNoHalt("Query failed: ", errmsg, "\n")
 end
 
----
--- Runs a query
--- @param text The query to run
--- @return A promise object for the query's result
+--- Runs a query
+--- @param text string The query to run
+--- @return Promise #A promise object for the query's result
 function Database:Query(text)
 	if (not self:IsConnected()) then
 		error("Cannot query a non-connected database!", 2)
@@ -163,11 +154,10 @@ function Database:Query(text)
 	return self._db:Query(text):Fail(queryFail)
 end
 
----
--- Prepares a query for future runnage with placeholders
--- @param text The querytext, complete with sprintf placeholders
--- @return A prepared query object
--- @see PreparedQuery
+--- Prepares a query for future runnage with placeholders
+--- @param text string The querytext, complete with sprintf placeholders
+--- @return DatabasePreparedQuery A prepared query object
+--- @see PreparedQuery
 function Database:PrepareQuery(text)
 	if (not text) then
 		error("No query text specified!", 2)
@@ -182,22 +172,16 @@ end
 
 -- Forwarded functions
 
----
--- Nukes the database connection with an undefined effect on any queries currently running. It's generally advisable not to call this
--- @name Database:Disconnect
--- @class function
+--- Nukes the database connection with an undefined effect on any queries currently running. It's generally advisable not to call this
 function Database:Disconnect()
 	if (self._db) then
 		self._db:Disconnect()
 	end
 end
 
----
--- Sanitise a string for insertion into the database
--- @name Database:Escape
--- @class function
--- @param text The string to santise
--- @return A ensafened string
+--- Sanitise a string for insertion into the database
+--- @param text string The string to santise
+--- @return string A ensafened string
 function Database:Escape(text)
 	if (not self._db) then
 		error("Cannot escape without an active DB. (Have you called Connect()?)")
@@ -205,9 +189,8 @@ function Database:Escape(text)
 	return self._db:Escape(text)
 end
 
----
--- Checks to seee if Connect as been called and Disconnect hasn't
--- @return boolean
+--- Checks to seee if Connect as been called and Disconnect hasn't
+--- @return boolean
 function Database:IsConnected()
 	return self._db and self._db:IsConnected() or false
 end
@@ -216,29 +199,28 @@ end
 -- QueryOBJ
 --
 
---
--- CTor. Only ever called by Database:PrepareQuery
--- @param qargs data from the mothership
--- @see Database:PrepareQuery
+--- CTor. Only ever called by Database:PrepareQuery
+--- @param qargs table data from the mothership
+--- @see Database:PrepareQuery
 function PreparedQuery:Init(qargs)
 	self._db     = qargs.DB
 	self.Text    = qargs.Text
 	self.NumArgs = qargs.NumArgs
 end
 
----
--- Set persistant callbacks to be called for every invocation. <br />
--- The callbacks should be of the form of function( [context,] result [, arg1, arg2, ...] ) where arg1+ are arguments passed to SetCallbackArgs
--- @see PreparedQuery:SetCallbackArgs
--- @usage <pre>
--- local query = db:PrepareQuery( "do player stuff" ); <br />
--- query:SetCallbacks( { <br />
--- &nbsp;&nbsp; Done: GM.PlayerStuffDone, <br />
--- &nbsp;&nbsp; Fail: GM.PlayerStuffFailed <br />
--- }, GM )
--- </pre>
--- @param tab A table of callbacks with names matching Promise object functions
--- @param context A variable to always pass as the first argument. Typically self for objects/GM.
+--- Set persistant callbacks to be called for every invocation.
+--- The callbacks should be of the form of function( [context,] result [, arg1, arg2, ...] ) where arg1+ are arguments passed to SetCallbackArgs
+--- @see PreparedQuery:SetCallbackArgs
+--- @usage
+--- ```lua
+--- local query = db:PrepareQuery( "do player stuff" );
+--- query:SetCallbacks( {
+---      Done: GM.PlayerStuffDone,
+---      Fail: GM.PlayerStuffFailed
+--- }, GM )
+--- ```
+--- @param tab table A table of callbacks with names matching Promise object functions
+--- @param context any A variable to always pass as the first argument. Typically self for objects/GM.
 function PreparedQuery:SetCallbacks(tab, context)
 	self._cDone = bind(tab.Done, context)
 	self._cFail = bind(tab.Fail, context)
@@ -246,9 +228,8 @@ function PreparedQuery:SetCallbacks(tab, context)
 	return self
 end
 
----
--- Sets any extra args that should be passed to the query's callbacks on the next invocation.
--- @param ... The arguments to be unpacked after the result
+--- Sets any extra args that should be passed to the query's callbacks on the next invocation.
+--- @param ... any The arguments to be unpacked after the result
 function PreparedQuery:SetCallbackArgs(...)
 	self._callbackArgs = { ... }
 	if (#self._callbackArgs == 0) then
@@ -257,9 +238,8 @@ function PreparedQuery:SetCallbackArgs(...)
 	return self
 end
 
----
--- Prepares the query for the next invocation.
--- @param ... The arguments to escape and sprintf into the query
+--- Prepares the query for the next invocation.
+--- @param ... any The arguments to escape and sprintf into the query
 function PreparedQuery:Prepare(...)
 	if (self.NumArgs == 0) then
 		return
@@ -287,9 +267,8 @@ local function bindCArgs(func, cargs)
 	end
 end
 
----
--- Run a prepared query (and then reset it so it can be re-prepared with new data)
--- @return A promise object for the query's data
+--- Run a prepared query (and then reset it so it can be re-prepared with new data)
+--- @return Promise #A promise object for the query's data
 function PreparedQuery:Run()
 	if (not self._db:IsConnected()) then
 		error("Cannot execute query without a database!", 2)
@@ -330,24 +309,23 @@ local function req(tab, name)
 end
 
 ---
--- The module's main function - Creates and returns a new database object
--- @usage <pre>
--- local db = database.NewDatabase( { <br />
--- &nbsp&nbsp; Hostname = "localhost", -- Where to find the MySQL server <br />
--- &nbsp&nbsp; Username = "root", -- Who to log in as <br />
--- &nbsp&nbsp; Password = "top secret password", -- The user's password <br />
--- &nbsp&nbsp; Database = "gmod", -- The database to work in <br />
--- &nbsp&nbsp; Port = 3306, -- [Optional] The port to connect to the server on <br />
--- &nbsp&nbsp; EnableSQLite = false, -- [Optional] If the server's local SQLite db is an acceptable 'MySQL server'. <br />
--- &nbsp&nbsp; DBMethod = false, -- [Optional] Override the automatic module checker <br />
--- } ); <br />
--- db:Connect() -- Returns a promise object <br />
--- &nbsp;&nbsp; :Done( function() end ) -- DB Connected <br />
--- &nbsp;&nbsp; :Fail( function( err ) end) -- DB could not connect. (Will trigger an error + server log automatically)
---</pre>
--- @param connection A table composed of the following fields:
--- @return A Database object
--- @see Database
+--- The module's main function - Creates and returns a new database object
+--- ```lua
+--- local db = database.NewDatabase({
+---     Hostname = "localhost", -- Where to find the MySQL server
+---     Username = "root", -- Who to log in as
+---     Password = "top secret password", -- The user's password
+---     Database = "gmod", -- The database to work in
+---     Port = 3306, -- [Optional] The port to connect to the server on
+---     EnableSQLite = false, -- [Optional] If the server's local SQLite db is an acceptable 'MySQL server'.
+---     DBMethod = false, -- [Optional] Override the automatic module checker
+--- });
+--- db:Connect() -- Returns a promise object
+---     :Done(function() end) -- DB Connected
+---     :Fail(function(err) end) -- DB could not connect. (Will trigger an error + server log automatically)
+--- ```
+--- @param connection DatabaseConnectionInfo A table composed of the following fields:
+--- @return Database #A Database object
 function database.NewDatabase(connection)
 	if (type(connection) ~= "table") then
 		error("Invalid connection data passed!", 2)
@@ -362,10 +340,9 @@ function database.NewDatabase(connection)
 	return new(Database, connection)
 end
 
---
--- Finds the first enabled database method
--- @param EnableSQLite Wether or not SQLite is acceptable
--- @return The name of the DB method or false if none are available
+--- Finds the first enabled database method
+--- @param EnableSQLite? boolean Wether or not SQLite is acceptable
+--- @return string | boolean #The name of the DB method or false if none are available
 function database.FindFirstAvailableDBMethod(EnableSQLite)
 	for name, method in pairs(registeredDatabaseMethods) do
 		if (method.CanSelect() and (EnableSQLite or name ~= "sqlite")) then
@@ -375,10 +352,9 @@ function database.FindFirstAvailableDBMethod(EnableSQLite)
 	return false
 end
 
---
--- Creates and returns a new instance of a DB method
--- @param name The name to instantatiationonate
--- @return An instance or false, errmsg
+--- Creates and returns a new instance of a DB method
+--- @param name string The name to instantatiationonate
+--- @return Database | boolean, string? #An instance if it worked, false and an error message if it didn't
 function database.GetNewDBMethod(name)
 	if (not name) then
 		error("No method name passed!", 2)
@@ -396,10 +372,9 @@ local function req(tab, name)
 	end
 end
 
----
--- Registers a new Database method for usage
--- @param name The name of the new method
--- @param tab The __index metatable for instances to have
+--- Registers a new Database method for usage
+--- @param name string The name of the new method
+--- @param tab DatabaseDriver The __index metatable for instances to have
 function database.RegisterDBMethod(name, tab)
 	if (type(name) ~= "string") then
 		error("Expected a string for argument 1 of database.RegisterDBMethod!", 2)
@@ -416,10 +391,9 @@ function database.RegisterDBMethod(name, tab)
 	registeredDatabaseMethods[string.lower(tab.Name)] = tab
 end
 
----
--- Checks to see if a Database method is available for use
--- @param name
--- @return true or false and an error message
+--- Checks to see if a Database method is available for use
+--- @param name string
+--- @return boolean success, string? error #true or false and an error message
 function database.IsValidDBMethod(name)
 	if (not name) then
 		error("No method name passed!", 2)
@@ -431,10 +405,9 @@ function database.IsValidDBMethod(name)
 	return db.CanSelect()
 end
 
---
--- Returns a DB method's master metatable
--- @param name
--- @return see above
+--- Returns a DB method's master metatable
+--- @param name string
+--- @return DatabaseDriver
 function database.GetDBMethod(name)
 	if (not name) then
 		error("No method name passed!", 2)

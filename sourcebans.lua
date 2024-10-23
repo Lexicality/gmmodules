@@ -42,7 +42,7 @@ local database = require("database")
 -- @author Lexi Robinson - lexi at lexi dot org dot uk
 -- @copyright 2011 Lexi Robinson - Relased under the LGPLv3 License
 -- @release version 2.0.0
-module("sourcebans")
+local sourcebans = {}
 --[[
 	CHANGELOG
 	2.0.0 Rewrote database handling & added fixes provided by Blackawps
@@ -500,7 +500,7 @@ local activated = false
 ---
 -- Starts the database and activates the module's functionality.
 -- @return A promise object that will resolve once the module is active.
-function Activate()
+function sourcebans.Activate()
 	if (activated) then
 		error("Do not call Activate() more than once!", 2)
 	end
@@ -512,7 +512,7 @@ end
 ---
 -- Checks to see if the database connection is currently active
 -- @return bool
-function IsActive()
+function sourcebans.IsActive()
 	return isActive()
 end
 
@@ -523,7 +523,7 @@ end
 -- @param reason Why the player is being banned
 -- @param admin ( Optional ) The admin who did the ban. Leave nil for CONSOLE.
 -- @param callback ( Optional ) A function to call with the results of the ban. Passed true if it worked, false and a message if it didn't.
-function BanPlayer(ply, time, reason, admin, callback)
+function sourcebans.BanPlayer(ply, time, reason, admin, callback)
 	callback = callback or blankCallback
 	if (not isActive()) then
 		return doAnError(callback, "No Database Connection")
@@ -545,14 +545,14 @@ end
 -- @param admin ( Optional ) The admin who did the ban. Leave nil for CONSOLE.
 -- @param name ( Optional ) The name to give the ban if no active player matches the SteamID.
 -- @param callback ( Optional ) A function to call with the results of the ban. Passed true if it worked, false and a message if it didn't.
-function BanPlayerBySteamID(steamID, time, reason, admin, name, callback)
+function sourcebans.BanPlayerBySteamID(steamID, time, reason, admin, name, callback)
 	callback = callback or blankCallback
 	if (not isActive()) then
 		return doAnError(callback, "No Database Connection")
 	end
 	for _, ply in pairs(player.GetAll()) do
 		if (ply:SteamID() == steamID) then
-			return BanPlayer(ply, time, reason, admin, callback)
+			return sourcebans.BanPlayer(ply, time, reason, admin, callback)
 		end
 	end
 	local promise = doBan(steamID, "", name, time, reason, admin)
@@ -570,14 +570,14 @@ end
 -- @param admin ( Optional ) The admin who did the ban. Leave nil for CONSOLE.
 -- @param name ( Optional ) The name to give the ban if no active player matches the IP.
 -- @param callback ( Optional ) A function to call with the results of the ban. Passed true if it worked, false and a message if it didn't.
-function BanPlayerByIP(ip, time, reason, admin, name, callback)
+function sourcebans.BanPlayerByIP(ip, time, reason, admin, name, callback)
 	callback = callback or blankCallback
 	if (not isActive()) then
 		return doAnError(callback, "No Database Connection")
 	end
 	for _, ply in pairs(player.GetAll()) do
 		if (getIP(ply) == ip) then
-			return BanPlayer(ply, time, reason, admin, callback)
+			return sourcebans.BanPlayer(ply, time, reason, admin, callback)
 		end
 	end
 	local promise = doBan("", cleanIP(ip), name, time, reason, admin)
@@ -597,7 +597,7 @@ end
 -- @param admin ( Optional ) The admin who did the ban. Leave nil for CONSOLE.
 -- @param name ( Optional ) The name to give the ban
 -- @param callback ( Optional ) A function to call with the results of the ban. Passed true if it worked, false and a message if it didn't.
-function BanPlayerBySteamIDAndIP(steamID, ip, time, reason, admin, name, callback)
+function sourcebans.BanPlayerBySteamIDAndIP(steamID, ip, time, reason, admin, name, callback)
 	callback = callback or blankCallback
 	if (not isActive()) then
 		return doAnError(callback, "No Database Connection")
@@ -614,7 +614,7 @@ end
 -- @param steamID The SteamID to unban
 -- @param reason The reason they are being unbanned.
 -- @param admin ( Optional ) The admin who did the unban. Leave nil for CONSOLE.
-function UnbanPlayerBySteamID(steamID, reason, admin)
+function sourcebans.UnbanPlayerBySteamID(steamID, reason, admin)
 	if (not isActive()) then
 		return doAnError(nil, "No Database Connection")
 	end
@@ -627,7 +627,7 @@ end
 -- @param ip The IPAddress to unban
 -- @param reason The reason they are being unbanned.
 -- @param admin ( Optional ) The admin who did the unban. Leave nil for CONSOLE.
-function UnbanPlayerByIPAddress(ip, reason, admin)
+function sourcebans.UnbanPlayerByIPAddress(ip, reason, admin)
 	if (not isActive()) then
 		return doAnError(nil, "No Database Connection")
 	end
@@ -641,7 +641,7 @@ end
 -- @see GetActiveBans
 -- @param callback (optional) The function to be given the table
 -- @return A promise object for the query
-function GetAllActiveBans(callback)
+function sourcebans.GetAllActiveBans(callback)
 	if (not isActive()) then
 		error("Not activated yet!", 2)
 	end
@@ -678,7 +678,7 @@ end
 -- @param numPerPage [Default: 20] The number of bans per page to fetch
 -- @param callback (Optional, deprecated) The function to be passed the table.
 -- @return A promise object for the query
-function GetActiveBans(pageNum, numPerPage, callback)
+function sourcebans.GetActiveBans(pageNum, numPerPage, callback)
 	if (not isActive()) then
 		error("Not activated yet!", 2)
 	end
@@ -702,7 +702,7 @@ end
 -- @param key The settings key to set
 -- @param value The value to set the key to.
 -- @usage Acceptable keys: hostname, username, password, database, dbprefix, portnumb, serverid, website, showbanreason and dogroups.
-function SetConfig(key, value)
+function sourcebans.SetConfig(key, value)
 	if (activated) then
 		error("Do not call SetConfig() after calling Activate()!", 2)
 	elseif (config[key] == nil) then
@@ -719,7 +719,7 @@ function SetConfig(key, value)
 end
 
 -- No longer required
-function CheckStatus()
+function sourcebans.CheckStatus()
 end
 
 ---
@@ -727,7 +727,7 @@ end
 -- @param steamID The SteamID to check
 -- @param callback (optional, deprecated) The callback function to tell the results to
 -- @return A promise
-function CheckForBan(steamID, callback)
+function sourcebans.CheckForBan(steamID, callback)
 	if (not isActive()) then
 		error("Not activated yet!", 2)
 	elseif (not steamID) then
@@ -747,7 +747,7 @@ end
 ---
 -- Gets all the admins active on this server
 -- @returns A table.
-function GetAdmins()
+function sourcebans.GetAdmins()
 	if (not isActive()) then
 		error("Not activated yet!", 2)
 	end
@@ -768,6 +768,6 @@ end
 
 ---
 -- Reloads the admin list from the server.
-function ReloadAdmins()
+function sourcebans.ReloadAdmins()
 	loadAdmins()
 end

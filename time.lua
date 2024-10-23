@@ -18,6 +18,7 @@
 
 local error, tonumber, math, string = error, tonumber, math, string
 
+
 ---
 -- This module provides various methods of describing time other than in terms of seconds, such as 6y5w4d3h2m1s to describe 6 years, 5 weeks, 4 days, 3 hours, 2 minutes and one second.
 -- This can be used for making user input simplyer, as 6y is far more user friendly than 189341556.</p><p>
@@ -29,21 +30,22 @@ local error, tonumber, math, string = error, tonumber, math, string
 -- <li><b>HOUR</b>: Used to specify hours in unit conversions</li>
 -- <li><b>MINUTE</b>: Used to specify minutes in unit conversions</li></ul>
 -- @release Version 1.0 Preemtive Release
-module("time")
+local _time = {}
+
 
 -- Unit Definitions
-YEAR   = 31556926
-WEEK   = 604800
-DAY    = 86400
-HOUR   = 3600
-MINUTE = 60
+_time.YEAR   = 31556926
+_time.WEEK   = 604800
+_time.DAY    = 86400
+_time.HOUR   = 3600
+_time.MINUTE = 60
 
 ---
 -- Converts time of one unit to seconds
 -- @param time The time
 -- @param unit The unit the time is in
 -- @return The time in seconds
-function UnitToSeconds(time, unit)
+function _time.UnitToSeconds(time, unit)
 	if (not time) then
 		error("No time specified!", 2)
 	elseif (not (unit and tonumber(unit))) then
@@ -57,7 +59,7 @@ end
 -- @param time The time
 -- @param unit The unit to convert the time to
 -- @return The time in the unit specified
-function SecondsToUnit(time, unit)
+function _time.SecondsToUnit(time, unit)
 	if (not time) then
 		error("No time specified!", 2)
 	elseif (not (unit and tonumber(unit))) then
@@ -70,7 +72,7 @@ end
 -- Converts a timestring into seconds
 -- @param str The timestring to converty
 -- @return The specified time
-function TimestringToSeconds(str)
+function _time.TimestringToSeconds(str)
 	if (not str) then
 		error("No timestring specified!", 2)
 	elseif (str == "") then
@@ -84,33 +86,33 @@ function TimestringToSeconds(str)
 	mins  = tonumber(string.match(str, "(%d+)%s?m")) or 0
 	secs  = tonumber(string.match(str, "(%d+)%s?s")) or 0
 	return secs +
-		mins * MINUTE +
-		hours * HOUR +
-		days * DAY +
-		weeks * WEEK +
-		years * YEAR
+		mins * _time.MINUTE +
+		hours * _time.HOUR +
+		days * _time.DAY +
+		weeks * _time.WEEK +
+		years * _time.YEAR
 end
 
 ---
 -- Converts a time into a timestring
 -- @param time The time in seconds
 -- @return A human readable timestring
-function SecondsToTimestring(time)
+function _time.SecondsToTimestring(time)
 	if (not time) then
 		error("No time specified!", 2)
 	end
 	time = math.floor(time)
 	local years, weeks, days, hours, minutes, seconds
-	years = SecondsToUnit(time, YEAR)
-	time = time - years * YEAR
-	weeks = SecondsToUnit(time, WEEK)
-	time = time - weeks * WEEK
-	days = SecondsToUnit(time, DAY)
-	time = time - days * DAY
-	hours = SecondsToUnit(time, HOUR)
-	time = time - hours * HOUR
-	minutes = SecondsToUnit(time, MINUTE)
-	time = time - minutes * MINUTE
+	years = _time.SecondsToUnit(time, _time.YEAR)
+	time = time - years * _time.YEAR
+	weeks = _time.SecondsToUnit(time, _time.WEEK)
+	time = time - weeks * _time.WEEK
+	days = _time.SecondsToUnit(time, _time.DAY)
+	time = time - days * _time.DAY
+	hours = _time.SecondsToUnit(time, _time.HOUR)
+	time = time - hours * _time.HOUR
+	minutes = _time.SecondsToUnit(time, _time.MINUTE)
+	time = time - minutes * _time.MINUTE
 	seconds = time
 	local str = ""
 	if (years > 0) then
@@ -133,3 +135,5 @@ function SecondsToTimestring(time)
 	end
 	return str
 end
+
+return _time

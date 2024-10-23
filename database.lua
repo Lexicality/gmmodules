@@ -50,7 +50,7 @@ local _TEST = _TEST
 -- @release 1.0.0
 -- @usage see database.NewDatabase
 -- @see NewDatabase
-module("database")
+local database = {}
 
 --- @class DatabaseConnectionInfo
 --- @field Hostname string
@@ -142,17 +142,17 @@ function Database:Connect()
 	if (not self._db) then
 		local db = self._conargs.DBMethod
 		if (db) then
-			local success, errmsg = IsValidDBMethod(db)
+			local success, errmsg = database.IsValidDBMethod(db)
 			if (not success) then
 				error("Cannot use database method '" .. db .. "': " .. errmsg, 2)
 			end
 		else
-			db = FindFirstAvailableDBMethod(self._conargs.EnableSQLite)
+			db = database.FindFirstAvailableDBMethod(self._conargs.EnableSQLite)
 			if (not db) then
 				error("No valid database methods available!", 2)
 			end
 		end
-		self._db = GetNewDBMethod(db)
+		self._db = database.GetNewDBMethod(db)
 	end
 	return self._db:Connect(self._conargs, self)
 		:Then(function(_) return self; end) -- Replace the dbobject with ourself
@@ -359,7 +359,7 @@ end
 -- @param connection A table composed of the following fields:
 -- @return A Database object
 -- @see Database
-function NewDatabase(connection)
+function database.NewDatabase(connection)
 	if (type(connection) ~= "table") then
 		error("Invalid connection data passed!", 2)
 	end
@@ -377,7 +377,7 @@ end
 -- Finds the first enabled database method
 -- @param EnableSQLite Wether or not SQLite is acceptable
 -- @return The name of the DB method or false if none are available
-function FindFirstAvailableDBMethod(EnableSQLite)
+function database.FindFirstAvailableDBMethod(EnableSQLite)
 	for name, method in pairs(registeredDatabaseMethods) do
 		if (method.CanSelect() and (EnableSQLite or name ~= "sqlite")) then
 			return name
@@ -390,15 +390,15 @@ end
 -- Creates and returns a new instance of a DB method
 -- @param name The name to instantatiationonate
 -- @return An instance or false, errmsg
-function GetNewDBMethod(name)
+function database.GetNewDBMethod(name)
 	if (not name) then
 		error("No method name passed!", 2)
 	end
-	local s, e = IsValidDBMethod(name)
+	local s, e = database.IsValidDBMethod(name)
 	if (not s) then
 		return s, e
 	end
-	return new(GetDBMethod(name))
+	return new(database.GetDBMethod(name))
 end
 
 local function req(tab, name)
@@ -411,7 +411,7 @@ end
 -- Registers a new Database method for usage
 -- @param name The name of the new method
 -- @param tab The __index metatable for instances to have
-function RegisterDBMethod(name, tab)
+function database.RegisterDBMethod(name, tab)
 	if (type(name) ~= "string") then
 		error("Expected a string for argument 1 of database.RegisterDBMethod!", 2)
 	elseif (type(tab) ~= "table") then
@@ -431,7 +431,7 @@ end
 -- Checks to see if a Database method is available for use
 -- @param name
 -- @return true or false and an error message
-function IsValidDBMethod(name)
+function database.IsValidDBMethod(name)
 	if (not name) then
 		error("No method name passed!", 2)
 	end
@@ -446,7 +446,7 @@ end
 -- Returns a DB method's master metatable
 -- @param name
 -- @return see above
-function GetDBMethod(name)
+function database.GetDBMethod(name)
 	if (not name) then
 		error("No method name passed!", 2)
 	end
@@ -455,10 +455,12 @@ end
 
 -- Expose our privates for dr test
 if (_TEST) then
-	_registeredDatabaseMethods = registeredDatabaseMethods
-	_Database = Database
-	_PreparedQuery = PreparedQuery
-	_new = new
-	_bind = bind
-	_bindCArgs = bindCArgs
+	database._registeredDatabaseMethods = registeredDatabaseMethods
+	database._Database = Database
+	database._PreparedQuery = PreparedQuery
+	database._new = new
+	database._bind = bind
+	database._bindCArgs = bindCArgs
 end
+
+return database

@@ -43,16 +43,11 @@ local c_ang  = CLASS_ANGLE
 local c_chr  = CLASS_CHAR
 local c_flt  = CLASS_FLOAT
 
-if (CLIENT) then
-	hook.Add("LocalPlayerCreated", "CSVars Startup", function(ply)
-		CSVars.PlayerInitialized(ply)
-	end)
-end
 
 ---
 -- Provides a method of automagically setting variables on a client's player object.
 -- @version 0.1 Pre-release beta
-module("CSVars")
+local CSVars = {}
 
 local inverted = {
 	[c_str] = "String",
@@ -86,7 +81,7 @@ if (SERVER) then
 	-- @param class One of the CLASS_ enums indicating the kind of variable
 	-- @param key The name of the variable to set on the client
 	-- @param value The value to set
-	function SetPlayer(ply, class, key, value)
+	function CSVars.SetPlayer(ply, class, key, value)
 		if (ply.CSVars[key] == nil or ply.CSVars[key] ~= value) then
 			ply.CSVars[key] = value
 			handle(ply, class, key, value)
@@ -98,14 +93,14 @@ if (SERVER) then
 	-- @param class One of the CLASS_ enums indicating the kind of variable
 	-- @param key The name of the variable to set on the client
 	-- @param value The value to set
-	function SetGlobal(class, key, value)
+	function CSVars.SetGlobal(class, key, value)
 		handle(nil, class, key, value)
 		for _, ply in pairs(player.GetAll()) do
 			ply.CSVars[key] = value
 		end
 	end
 else
-	vars = {}
+	CSVars.vars = {}
 	local hooks = {}
 	local lpl = NULL
 	---
@@ -113,7 +108,7 @@ else
 	-- @param key The name of the CSVar to hook on
 	-- @param name The unique name of the hook
 	-- @param func (value, class) the hook callback
-	function Hook(key, name, func)
+	function CSVars.Hook(key, name, func)
 		hooks[key] = hooks[key] or {}
 		hooks[key][name] = func
 	end
@@ -122,7 +117,7 @@ else
 	-- Removes a perviously active hook
 	-- @param key The name of the CSVar the hook was on on
 	-- @param name The unique name of the hook
-	function UnHook(key, name)
+	function CSVars.UnHook(key, name)
 		if (hooks[key] and hooks[key][name]) then
 			hooks[key][name] = nil
 		end
@@ -138,7 +133,7 @@ else
 			return
 		end
 		local var = msg["Read" .. name](msg)
-		vars[key] = var
+		CSVars.vars[key] = var
 		if (hooks[key]) then
 			for _, func in pairs(hooks[key]) do
 				local res, err = pcall(func, var, class)
@@ -163,10 +158,16 @@ else
 
 	---
 	-- Called when the player's object is created and assigned to the global lpl
-	function PlayerInitialized(ply)
+	function CSVars.PlayerInitialized(ply)
 		lpl = ply
-		for k, v in pairs(vars) do
+		for k, v in pairs(CSVars.vars) do
 			lpl[k] = v
 		end
 	end
+
+	hook.Add("LocalPlayerCreated", "CSVars Startup", function(ply)
+		CSVars.PlayerInitialized(ply)
+	end)
 end
+
+return CSVars

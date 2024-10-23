@@ -18,27 +18,16 @@
 
 
 -- Lua
-local error, type, unpack, pairs, ipairs, tonumber, setmetatable, require, string =
-	error, type, unpack, pairs, ipairs, tonumber, setmetatable, require, string
+local error, type, unpack, pairs, tonumber, setmetatable, require, string =
+	error, type, unpack, pairs, tonumber, setmetatable, require, string
 -- GLua
-local file, system, SERVER, ErrorNoHalt =
-	file, system, SERVER, ErrorNoHalt
+local ErrorNoHalt = ErrorNoHalt
 
 if (not ErrorNoHalt) then
 	ErrorNoHalt = function(...)
 		print("[ERROR]", ...)
 	end
 end
-
-local Deferred = require "promises"
--- Databases
-local sqlite   = sql
-local mysqloo  = mysqloo
-local tmysql   = tmysql
-
-
--- Testing
-local _TEST = _TEST
 
 ---
 -- The Universal Database Module is an attempt to provide a single rational interface

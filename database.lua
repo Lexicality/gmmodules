@@ -46,8 +46,11 @@ local database = {}
 --- @field Database string
 --- @field Port? integer
 --- @field Socket? string
+--- @field DBMethod? string
+--- @field EnableSQLite? boolean
 
 --- @class DatabaseDriver
+--- @field Name string
 --- @field Init? fun(self): nil
 --- @field Connect fun(self, info: DatabaseConnectionInfo): Promise
 --- @field Disconnect fun(self): nil
@@ -58,6 +61,7 @@ local database = {}
 
 --- The main Database object the developer will generally be interacting with
 --- @class Database
+--- @field private _db DatabaseDriver
 local Database = {}
 
 --- A client-side prepared query object.
@@ -100,8 +104,10 @@ end
 --- CTor. Accepts the variables passed to NewDatabase
 --- @see NewDatabase
 --- @param tab DatabaseConnectionInfo connection details
-function Database:Init(tab)
+--- @param db DatabaseDriver the selected driver
+function Database:Init(tab, db)
 	self._conargs = tab
+	self._db = db
 end
 
 local function connectionFail(errmsg)
@@ -120,22 +126,7 @@ end
 --- @return Promise #object for the DB connection
 --- @see NewDatabase
 function Database:Connect()
-	if (not self._db) then
-		local db = self._conargs.DBMethod
-		if (db) then
-			local success, errmsg = database.IsValidDBMethod(db)
-			if (not success) then
-				error("Cannot use database method '" .. db .. "': " .. errmsg, 2)
-			end
-		else
-			db = database.FindFirstAvailableDBMethod(self._conargs.EnableSQLite)
-			if (not db) then
-				error("No valid database methods available!", 2)
-			end
-		end
-		self._db = database.GetNewDBMethod(db)
-	end
-	return self._db:Connect(self._conargs, self)
+	return self._db:Connect(self._conargs)
 		:Then(function(_) return self; end) -- Replace the dbobject with ourself
 		:Fail(connectionFail)         -- Always thrown an errmsg
 end
@@ -174,25 +165,20 @@ end
 
 --- Nukes the database connection with an undefined effect on any queries currently running. It's generally advisable not to call this
 function Database:Disconnect()
-	if (self._db) then
-		self._db:Disconnect()
-	end
+	self._db:Disconnect()
 end
 
 --- Sanitise a string for insertion into the database
 --- @param text string The string to santise
 --- @return string A ensafened string
 function Database:Escape(text)
-	if (not self._db) then
-		error("Cannot escape without an active DB. (Have you called Connect()?)")
-	end
 	return self._db:Escape(text)
 end
 
 --- Checks to seee if Connect as been called and Disconnect hasn't
 --- @return boolean
 function Database:IsConnected()
-	return self._db and self._db:IsConnected() or false
+	return self._db:IsConnected()
 end
 
 --
@@ -301,6 +287,23 @@ function PreparedQuery:Run()
 end
 
 local registeredDatabaseMethods = {}
+local SQLITE_NAME = "sqlite"
+
+--- Finds the first enabled database method
+--- @param enable_sqlite? boolean Wether or not SQLite is acceptable
+--- @return DatabaseDriver #The name of the DB method or false if none are available
+local function findFirstAvailableDBMethod(enable_sqlite)
+	for name, method in pairs(registeredDatabaseMethods) do
+		if name ~= SQLITE_NAME and method.CanSelect() then
+			return method
+		end
+	end
+	-- Always treat SQLite as a last resort
+	if enable_sqlite and registeredDatabaseMethods[SQLITE_NAME] then
+		return registeredDatabaseMethods[SQLITE_NAME]
+	end
+	error("No valid database methods available!", 2)
+end
 
 local function req(tab, name)
 	if (not tab[name]) then
@@ -337,31 +340,30 @@ function database.NewDatabase(connection)
 	connection.Port = connection.Port or 3306
 	connection.Port = tonumber(connection.Port)
 	req(connection, "Port")
-	return new(Database, connection)
-end
 
---- Finds the first enabled database method
---- @param EnableSQLite? boolean Wether or not SQLite is acceptable
---- @return string | boolean #The name of the DB method or false if none are available
-function database.FindFirstAvailableDBMethod(EnableSQLite)
-	for name, method in pairs(registeredDatabaseMethods) do
-		if (method.CanSelect() and (EnableSQLite or name ~= "sqlite")) then
-			return name
+	local db_name = connection.DBMethod
+	--- @type DatabaseDriver
+	local db_driver
+	if type(db_name) == "string" then
+		db_driver = registeredDatabaseMethods[string.lower(db_name)]
+		if not db_driver then
+			error("Database module '" .. db_name .. "' does not exist!")
+		elseif not db_driver:CanSelect() then
+			error("Database module '" .. db_name .. "' is not available!")
 		end
+	else
+		db_driver = findFirstAvailableDBMethod(connection.EnableSQLite)
 	end
-	return false
+	return new(Database, connection, new(db_driver))
 end
 
 --- Creates and returns a new instance of a DB method
 --- @param name string The name to instantatiationonate
---- @return Database | boolean, string? #An instance if it worked, false and an error message if it didn't
+--- @return DatabaseDriver  #An instance if it worked, false and an error message if it didn't
 function database.GetNewDBMethod(name)
-	if (not name) then
-		error("No method name passed!", 2)
-	end
 	local s, e = database.IsValidDBMethod(name)
 	if (not s) then
-		return s, e
+		error("Cannot use database method '" .. name .. "': " .. e, 2)
 	end
 	return new(database.GetDBMethod(name))
 end
@@ -373,15 +375,9 @@ local function req(tab, name)
 end
 
 --- Registers a new Database method for usage
---- @param name string The name of the new method
 --- @param tab DatabaseDriver The __index metatable for instances to have
-function database.RegisterDBMethod(name, tab)
-	if (type(name) ~= "string") then
-		error("Expected a string for argument 1 of database.RegisterDBMethod!", 2)
-	elseif (type(tab) ~= "table") then
-		error("Expected a table for argument 2 of database.RegisterDBMethod!", 2)
-	end
-	tab.Name = name
+function database.RegisterDBMethod(tab)
+	req(tab, "Name")
 	req(tab, "Connect")
 	req(tab, "Disconnect")
 	req(tab, "IsConnected")
@@ -391,33 +387,10 @@ function database.RegisterDBMethod(name, tab)
 	registeredDatabaseMethods[string.lower(tab.Name)] = tab
 end
 
---- Checks to see if a Database method is available for use
---- @param name string
---- @return boolean success, string? error #true or false and an error message
-function database.IsValidDBMethod(name)
-	if (not name) then
-		error("No method name passed!", 2)
-	end
-	local db = registeredDatabaseMethods[string.lower(name)]
-	if (not db) then
-		return false, "Database method '" .. name .. "' does not exist!"
-	end
-	return db.CanSelect()
-end
-
---- Returns a DB method's master metatable
---- @param name string
---- @return DatabaseDriver
-function database.GetDBMethod(name)
-	if (not name) then
-		error("No method name passed!", 2)
-	end
-	return registeredDatabaseMethods[string.lower(name)]
-end
-
 -- Expose our privates for dr test
 if (_TEST) then
 	database._registeredDatabaseMethods = registeredDatabaseMethods
+	database._findFirstAvailableDBMethod = findFirstAvailableDBMethod
 	database._Database = Database
 	database._PreparedQuery = PreparedQuery
 	database._new = new

@@ -21,11 +21,13 @@ _G.ErrorNoHalt = function() end
 -- Given that busted doesn't do this (despite saying it does)
 _G._TEST = true
 
+local match = require("luassert.match")
 local database = require "database"
 local drivers = require "database_drivers"
 local Deferred = require "promises"
 
 local mockDB = {
+	Name = "Mock",
 	["Connect"] = function(self)
 		return Deferred():Resolve(self):Promise()
 	end,
@@ -45,6 +47,7 @@ local mockDB = {
 }
 
 local invalidDB = {
+	Name = "Mock",
 	["Connect"] = function() end,
 	["Disconnect"] = function() end,
 	["IsConnected"] = function() end,
@@ -54,6 +57,7 @@ local invalidDB = {
 }
 
 local emptyDB = {
+	Name = "Mock",
 	["Connect"] = function() end,
 	["Disconnect"] = function() end,
 	["IsConnected"] = function() end,
@@ -77,7 +81,14 @@ local function thenable(a)
 end
 
 local function setupMockDriver()
-	database.RegisterDBMethod("Mock", mockDB)
+	database.RegisterDBMethod(mockDB)
+end
+
+local function registerSQLite()
+	local _mocksqlite = copy(mockDB)
+	_mocksqlite.Name = "SQLite"
+	database.RegisterDBMethod(_mocksqlite)
+	return _mocksqlite
 end
 
 local function clearDrivers()
@@ -164,17 +175,21 @@ end)
 
 -- "Simple" tests
 describe("NewDatabase", function()
+	after_each(clearDrivers)
+
 	it("should be picky about its arguments", function()
 		---@diagnostic disable-next-line: missing-parameter
 		assert.has.error(function() database.NewDatabase(); end)
 		---@diagnostic disable-next-line: param-type-mismatch
 		assert.has.error(function() database.NewDatabase(false); end)
 		local function checkErrors(...)
+			database.RegisterDBMethod(mockDB)
 			local tab = {}
 			for _, name in pairs { ... } do
 				tab[name] = ""
 			end
-			assert.has.error(function() database.NewDatabase(tab); end)
+			assert.has.error_matches(function() database.NewDatabase(tab); end,
+				"You're missing '.+' from the connection parameters!")
 		end
 
 		checkErrors("Hostname")
@@ -190,9 +205,11 @@ describe("NewDatabase", function()
 				---@diagnostic disable-next-line: assign-type-mismatch
 				Port = "Hi!",
 			})
-		end)
+		end, "You're missing 'Port' from the connection parameters!")
 	end)
-	it("Should return an objet", function()
+
+	it("Should return an object", function()
+		database.RegisterDBMethod(mockDB)
 		assert.is_table(database.NewDatabase({
 			Username = "",
 			Hostname = "",
@@ -200,62 +217,102 @@ describe("NewDatabase", function()
 			Database = "",
 		}))
 	end)
+
+	it("Validates the specified DB driver exists", function()
+		assert.has.error(function()
+				database.NewDatabase({
+					Hostname = "",
+					Username = "",
+					Password = "",
+					Database = "",
+					DBMethod = "Invalid",
+				})
+			end,
+			"Database module 'Invalid' does not exist!")
+	end)
+
+	it("Validates the specified DB driver can be selected", function()
+		database.RegisterDBMethod(invalidDB)
+		assert.has.error(function()
+				database.NewDatabase({
+					Hostname = "",
+					Username = "",
+					Password = "",
+					Database = "",
+					DBMethod = "Mock",
+				})
+			end,
+			"Database module 'Mock' is not available!")
+	end)
+
+	it("Requires a database driver exists", function()
+		registerSQLite()
+		assert.has.error(function()
+				database.NewDatabase({
+					Hostname = "",
+					Username = "",
+					Password = "",
+					Database = "",
+				})
+			end,
+			"No valid database methods available!")
+	end)
+
+	it("Can select SQLite", function()
+		registerSQLite()
+		assert.has.no_error(function()
+			database.NewDatabase({
+				Hostname = "",
+				Username = "",
+				Password = "",
+				Database = "",
+				EnableSQLite = true,
+			})
+		end
+		)
+	end)
 end)
 
 
-describe("FindFirstAvailableDBMethod", function()
-	before_each(function()
-		local _mocksqlite = copy(mockDB)
-		database.RegisterDBMethod("SQLite", _mocksqlite)
-	end)
+describe("findFirstAvailableDBMethod", function()
 	after_each(clearDrivers)
 
-	it("Should return false if nothing is available", function()
-		assert.is_false(database.FindFirstAvailableDBMethod())
+	it("Should error if nothing is available", function()
+		assert.has.error(function() print(database._findFirstAvailableDBMethod().Name) end)
 	end)
-	it("Should return SQLite if you ask for it", function()
-		assert.is.equal(database.FindFirstAvailableDBMethod(true), "sqlite")
+
+	it("Returns an available method", function()
+		database.RegisterDBMethod(mockDB)
+		assert.is.equal(database._findFirstAvailableDBMethod(), mockDB)
 	end)
-	it("Should return the mock db method when available", function()
-		database.RegisterDBMethod("Mock", mockDB)
-		assert.is.equal(database.FindFirstAvailableDBMethod(), "mock")
-		database.RegisterDBMethod("Mock", invalidDB)
-		assert.is_false(database.FindFirstAvailableDBMethod())
+
+	it("Should error if something is available but not selectable", function()
+		database.RegisterDBMethod(invalidDB)
+		assert.has.error(function() database._findFirstAvailableDBMethod() end)
 	end)
+
+	it("Should error if SQLite is available but unasked for", function()
+		registerSQLite()
+		assert.has.error(function() database._findFirstAvailableDBMethod() end)
+	end)
+
+	it("Should return SQLite if requested and nothing else is available", function()
+		local sqlite = registerSQLite()
+		assert.is.equal(database._findFirstAvailableDBMethod(true), sqlite)
+	end)
+
+	it("Should not return SQLite if something better is available", function()
+		database.RegisterDBMethod(mockDB)
+		registerSQLite()
+		assert.is.equal(database._findFirstAvailableDBMethod(true), mockDB)
+	end)
+
 	it("Should check the validity of db methods", function()
-		database.RegisterDBMethod("Mock", mockDB)
+		database.RegisterDBMethod(mockDB)
 		local _spy = spy.on(mockDB, "CanSelect")
-		assert.is_true(database.IsValidDBMethod("Mock"))
-		assert.is.equal(database.FindFirstAvailableDBMethod(), "mock")
+		assert.is.equal(database._findFirstAvailableDBMethod(), mockDB)
 		assert.spy(_spy).was.called_at_least(1)
 		_spy:revert()
-	end)
-end)
-
-describe("GetNewDBMethod", function()
-	before_each(setupMockDriver)
-	after_each(clearDrivers)
-
-	it("should be picky about its arguments", function()
-		---@diagnostic disable-next-line: missing-parameter
-		assert.has.error(function() database.GetNewDBMethod(); end)
-	end)
-	it("should return false for invalid methods", function()
-		assert.is_false(database.GetNewDBMethod("doesn't exist"))
-	end)
-	it("should return an object for valid methods", function()
-		assert.is_table(database.GetNewDBMethod("Mock"))
-	end)
-	it("should check if the method is valid", function()
-		local _spy = spy.on(database, "IsValidDBMethod")
-		database.GetNewDBMethod("Mock")
-		assert.spy(_spy).was.called(1)
-		_spy:revert()
-	end)
-	it("should return an instance of a valid method", function()
-		local method = database.GetNewDBMethod("Mock")
-		assert.is_not_false(method)
-		assert.is.equal(method.Connect, mockDB.Connect)
 	end)
 end)
 
@@ -265,18 +322,16 @@ describe("RegisterDBMethod", function()
 	it("should be picky about its arguments", function()
 		---@diagnostic disable-next-line: missing-parameter
 		assert.has.error(function() database.RegisterDBMethod(); end)
-		---@diagnostic disable-next-line: missing-parameter, param-type-mismatch
-		assert.has.error(function() database.RegisterDBMethod({}); end)
-		---@diagnostic disable-next-line: missing-parameter
-		assert.has.error(function() database.RegisterDBMethod(""); end)
 		---@diagnostic disable-next-line: missing-fields
-		assert.has.error(function() database.RegisterDBMethod("", {}); end)
+		assert.has.error(function() database.RegisterDBMethod({}); end)
+		---@diagnostic disable-next-line: param-type-mismatch
+		assert.has.error(function() database.RegisterDBMethod(""); end)
 		local function checkErrors(...)
-			local tab = {}
+			local tab = { Name = "" }
 			for _, name in pairs { ... } do
 				tab[name] = function() end
 			end
-			assert.has.error(function() database.RegisterDBMethod("", tab); end)
+			assert.has.error(function() database.RegisterDBMethod(tab); end)
 		end
 
 		checkErrors("Connect")
@@ -288,63 +343,15 @@ describe("RegisterDBMethod", function()
 	end)
 	it("should create methods", function()
 		assert.has_no.error(function()
-			database.RegisterDBMethod("arg_test", emptyDB)
+			database.RegisterDBMethod(emptyDB)
 		end)
-		assert.is_true(database.IsValidDBMethod("arg_test"))
-		assert.is.equal(database._registeredDatabaseMethods["arg_test"], emptyDB)
+		assert.is.equal(database._registeredDatabaseMethods["mock"], emptyDB)
 	end)
 	it("should overwite methods", function()
-		database.RegisterDBMethod("overwrite_test", mockDB)
-		database.RegisterDBMethod("overwrite_test", emptyDB)
-		assert.is_not.equal(database._registeredDatabaseMethods["overwrite_test"], mockDB)
-		assert.is.equal(database._registeredDatabaseMethods["overwrite_test"], emptyDB)
-	end)
-end)
-
-describe("IsValidDBMethod", function()
-	before_each(setupMockDriver)
-	after_each(clearDrivers)
-
-	it("errors if not passed anything", function()
-		---@diagnostic disable-next-line: missing-parameter
-		assert.has.error(function() database.IsValidDBMethod() end)
-	end)
-	it("should return true for valid methods", function()
-		assert.is_true(database.IsValidDBMethod("Mock"))
-	end)
-	it("should return false for invalid methods", function()
-		assert.is_false(database.IsValidDBMethod("doesn't exist"))
-	end)
-	it("should be case insensitive", function()
-		assert.is_true(database.IsValidDBMethod("Mock"))
-		assert.is_true(database.IsValidDBMethod("mock"))
-		assert.is_true(database.IsValidDBMethod("MOCK"))
-		assert.is_true(database.IsValidDBMethod("MoCk"))
-	end)
-	it("should ask the method", function()
-		local _spy = spy.on(mockDB, "CanSelect")
-		assert.is_true(database.IsValidDBMethod("Mock"))
-		assert.spy(_spy).was.called(1)
-		_spy:revert()
-	end)
-end)
-
-describe("GetDBMethod", function()
-	before_each(setupMockDriver)
-	after_each(clearDrivers)
-
-	it("should be picky about its arguments", function()
-		---@diagnostic disable-next-line: missing-parameter
-		assert.has.error(function() database.GetDBMethod(); end)
-	end)
-	it("should return nil for invalid methods", function()
-		assert.is_nil(database.GetDBMethod("doesn't exist"))
-	end)
-	it("should return an object for valid methods", function()
-		assert.is_table(database.GetDBMethod("Mock"))
-	end)
-	it("should return the method that was registered", function()
-		assert.is.equal(database.GetDBMethod("Mock"), mockDB)
+		database.RegisterDBMethod(mockDB)
+		database.RegisterDBMethod(emptyDB)
+		assert.is_not.equal(database._registeredDatabaseMethods["mock"], mockDB)
+		assert.is.equal(database._registeredDatabaseMethods["mock"], emptyDB)
 	end)
 end)
 
@@ -353,7 +360,7 @@ describe("Database", function()
 	local db, mockObj, cparams
 	before_each(function()
 		mockObj = mock(copy(mockDB))
-		database.RegisterDBMethod("Mock", mockObj)
+		database.RegisterDBMethod(mockObj)
 		cparams = {
 			Username = "username",
 			Hostname = "hostname",
@@ -368,22 +375,31 @@ describe("Database", function()
 		mockObj = nil
 		clearDrivers()
 	end)
+
 	describe(":Connect", function()
 		it("Should default to the only available method", function()
 			db:Connect()
 			assert.spy(mockObj.CanSelect).was.called_at_least(1)
 			assert.spy(mockObj.Connect).was.called(1)
-			assert.spy(mockObj.Connect).was.called_with(mockObj, cparams, db)
+			assert.spy(mockObj.Connect).was.called_with(match._, cparams)
 		end)
 
 		it("Should use the requested method", function()
 			-- Setup
-			local mockObj1 = mock(copy(mockDB))
-			local mockObj2 = mock(copy(mockDB))
-			local mockObj3 = mock(copy(mockDB))
-			database.RegisterDBMethod("Mock 1", mockObj1)
-			database.RegisterDBMethod("Mock 2", mockObj2)
-			database.RegisterDBMethod("Mock 3", mockObj3)
+			local _mockObj1 = copy(mockDB)
+			_mockObj1.Name = "Mock 1"
+			local mockObj1 = mock(_mockObj1)
+			database.RegisterDBMethod(mockObj1)
+
+			local _mockObj2 = copy(mockDB)
+			_mockObj2.Name = "Mock 2"
+			local mockObj2 = mock(_mockObj2)
+			database.RegisterDBMethod(mockObj2)
+
+			local _mockObj3 = copy(mockDB)
+			_mockObj3.Name = "Mock 3"
+			local mockObj3 = mock(_mockObj3)
+			database.RegisterDBMethod(mockObj3)
 
 			cparams["DBMethod"] = "Mock 2"
 			db = database.NewDatabase(cparams)
@@ -394,18 +410,7 @@ describe("Database", function()
 			assert.spy(mockObj1.Connect).was.called(0)
 			assert.spy(mockObj3.Connect).was.called(0)
 			assert.spy(mockObj2.Connect).was.called(1)
-			assert.spy(mockObj2.Connect).was.called_with(mockObj2, cparams, db)
-		end)
-
-		it("should error if asked to use an invalid db method", function()
-			cparams["DBMethod"] = "doesn't exist"
-			db = database.NewDatabase(cparams)
-			assert.has.error(function() db:Connect() end)
-		end)
-
-		it("should error if there are no db methods available", function()
-			database.RegisterDBMethod("Mock", invalidDB)
-			assert.has.error(function() db:Connect() end)
+			assert.spy(mockObj2.Connect).was.called_with(match._, cparams)
 		end)
 
 		it("Should return itself on successful connect", function()
@@ -418,11 +423,6 @@ describe("Database", function()
 	end)
 
 	describe(":Query", function()
-		it("Should throw an error if the database has never connected", function()
-			assert.has.error(function() db:Query("foo") end)
-			db:Connect()
-			assert.has_no.error(function() db:Query("foo") end)
-		end)
 		-- TODO: Query Queue!
 		it("should throw an error if the database disconnects", function()
 			local IsConnected = true
@@ -456,9 +456,6 @@ describe("Database", function()
 	end)
 
 	describe(":Escape", function()
-		it("causes an error on a non-connected database", function()
-			assert.has.error(function() db:Escape("foobar") end)
-		end)
 		it("passes arguments verbatum to the db method", function()
 			db:Connect()
 			local value = "foobar"
@@ -476,10 +473,6 @@ describe("Database", function()
 	end)
 
 	describe(":Disconnect", function()
-		it("does nothing on a non-connected database", function()
-			assert.has_no.error(function() db:Disconnect() end)
-			assert.spy(mockObj.Disconnect).was.called(0)
-		end)
 		it("calls the db method", function()
 			db:Connect()
 			assert.has_no.error(function() db:Disconnect() end)
@@ -558,7 +551,7 @@ describe("PreparedQuery", function()
 		queryFunc = function(def)
 
 		end
-		database.RegisterDBMethod("Mock", mockObj)
+		database.RegisterDBMethod(mockObj)
 		cparams = {
 			Username = "username",
 			Hostname = "hostname",

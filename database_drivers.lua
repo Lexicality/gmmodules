@@ -79,7 +79,9 @@ do -- TMySQL
 
 	--- @class DatabaseTMySQLDriver: DatabaseDriver
 	--- @field private _db? TMySQLDB
-	local db = {}
+	local db = {
+		Name = "TMySQL",
+	}
 
 	---@param tab DatabaseConnectionInfo
 	---@return Promise
@@ -134,7 +136,7 @@ do -- TMySQL
 		return true
 	end
 
-	database.RegisterDBMethod("TMySQL", db)
+	database.RegisterDBMethod(db)
 	drivers.tmysql = db
 end
 do -- MySQLOO
@@ -168,7 +170,9 @@ do -- MySQLOO
 	--- @class DatabaseMySQLOODriver: DatabaseDriver
 	--- @field private _queue {text: string, deferred: Deferred}[]
 	--- @field private _db? MySQLOODatabase
-	local db = {}
+	local db = {
+		Name = "MySQLOO",
+	}
 
 	function db:Init()
 		self._queue = {}
@@ -295,12 +299,14 @@ do -- MySQLOO
 		return true
 	end
 
-	database.RegisterDBMethod("MySQLOO", db)
+	database.RegisterDBMethod(db)
 	drivers.mysqloo = db
 end
 do -- SQLite
-	--- @class DatabaseSQLiteDriver
-	local db = {}
+	--- @class DatabaseSQLiteDriver : DatabaseDriver
+	local db = {
+		Name = "SQLite",
+	}
 
 	---@param _ DatabaseConnectionInfo
 	---@return Promise
@@ -343,7 +349,7 @@ do -- SQLite
 		return true
 	end
 
-	database.RegisterDBMethod("SQLite", db)
+	database.RegisterDBMethod(db)
 	drivers.sqlite = db
 end
 

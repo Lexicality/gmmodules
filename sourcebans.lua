@@ -24,6 +24,7 @@
 CreateConVar("sb_version", "2.0.0", FCVAR_SPONLY + FCVAR_REPLICATED + FCVAR_NOTIFY,
 	"The current version of the SourceBans.lua module")
 -- This creates a fake concommand that doesn't exist but makes the engine think it does. Useful.
+---@diagnostic disable-next-line: undefined-global
 AddConsoleCommand("sb_reload", "Doesn't do anything - Legacy from the SourceMod version.")
 
 local error, ErrorNoHalt, GetConVarNumber, GetConVarString, Msg, pairs, print, ServerLog, tonumber, tostring, tobool, IsValid =
@@ -80,11 +81,11 @@ local config = {
 	showbanreason = true,
 }
 local dbConfig = {
-	hostname = Hostname,
-	username = Username,
-	password = Password,
-	database = Database,
-	portnumb = Port,
+	hostname = "Hostname",
+	username = "Username",
+	password = "Password",
+	database = "Database",
+	portnumb = "Port",
 }
 
 local db = database.NewDatabase({
@@ -110,7 +111,7 @@ end
 
 --[[ Tables ]] --
 local admins, adminsByID, adminGroups, database
-local queries = {
+local _queries = {
 	-- BanChkr
 	["Check for Bans"] = (
 		"SELECT bid, name, ends, authid, ip FROM %s_bans WHERE ( length = 0 OR ends > UNIX_TIMESTAMP()) AND removetype IS NULL AND (authid = '%s' OR ip = '%s' ) LIMIT 1"
@@ -237,7 +238,8 @@ end
 local function blankCallback() end
 
 --[[ Set up Queries ]] --
-for key, qtext in pairs(queries) do
+local queries = {}
+for key, qtext in pairs(_queries) do
 	queries[key] = db:PrepareQuery(qtext)
 end
 

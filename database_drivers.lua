@@ -63,17 +63,15 @@ end
 
 do -- TMySQL
 	---@param deferred Deferred
-	---@param results TMySQLResult
-	---@param success boolean
-	---@param err? string
-	local function mcallback(deferred, results, success, err)
-		if success then
-			for _, result in ipairs(results) do
+	---@param result TMySQLResult
+	local function mcallback(deferred, result)
+		if result.success then
+			for _, result in ipairs(result.results) do
 				deferred:Notify(result)
 			end
-			deferred:Resolve(results)
+			deferred:Resolve(result.results)
 		else
-			deferred:Reject(err)
+			deferred:Reject(result.error)
 		end
 	end
 
@@ -90,12 +88,22 @@ do -- TMySQL
 		if self._db then
 			self:Disconnect()
 		end
-		local err
-		self._db, err = tmysql.initialize(tab.Hostname, tab.Username, tab.Password, tab.Database, tab.Port)
-		if self._db then
+		local db = tmysql.Create(
+			tab.Hostname,
+			tab.Username,
+			tab.Password,
+			tab.Database,
+			tab.Port,
+			tab.Socket
+		)
+		self._db = db
+		local res, err = db:Connect()
+		if res then
+			-- "You have to manually poll now - it's faster, by a lot. Trust me." 🙄
+			hook.Add("Think", db, db.Poll)
 			deferred:Resolve(self)
 		else
-			deferred:Reject(string.gsub(err, "^Error connecting to DB: ", ""))
+			deferred:Reject(string.gsub(err --[[@as string]], "^Error connecting to DB: ", ""))
 		end
 		return deferred:Promise()
 	end
@@ -114,18 +122,21 @@ do -- TMySQL
 			error("Cannot query without a database connected!")
 		end
 		local deferred = Deferred()
-		self._db:Query(text, mcallback, 1, deferred)
+		self._db:Query(text, mcallback, deferred)
 		return deferred:Promise()
 	end
 
 	---@param text string
 	---@return string
 	function db:Escape(text)
-		return tmysql.escape(text)
+		if not self._db then
+			error("There is no database open to do this!")
+		end
+		return self._db:Escape(text)
 	end
 
 	function db:IsConnected()
-		return self._db ~= nil
+		return self._db and self._db:IsConnected() or false
 	end
 
 	function db.CanSelect()

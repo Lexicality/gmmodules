@@ -157,11 +157,6 @@ do -- MySQLOO
 	end
 
 	---@param query DatabaseMySQLOOQuery
-	function mysqlooack(query)
-		mysqloono(query, "Aborted!")
-	end
-
-	---@param query DatabaseMySQLOOQuery
 	---@param result MySQLOOResult
 	function mysqloodata(query, result)
 		query.deferred:Notify(result)
@@ -170,6 +165,7 @@ do -- MySQLOO
 	--- @class DatabaseMySQLOODriver: DatabaseDriver
 	--- @field private _queue {text: string, deferred: Deferred}[]
 	--- @field private _db? MySQLOODatabase
+	--- @field private _cdata? DatabaseConnectionInfo
 	local db = {
 		Name = "MySQLOO",
 	}
@@ -184,7 +180,15 @@ do -- MySQLOO
 		if self._db then
 			self:Disconnect()
 		end
-		return self:_connect(mysqloo.connect(cdata.Hostname, cdata.Username, cdata.Password, cdata.Database, cdata.Port))
+		self._cdata = cdata
+		return self:_connect(mysqloo.connect(
+			cdata.Hostname,
+			cdata.Username,
+			cdata.Password,
+			cdata.Database,
+			cdata.Port,
+			cdata.Socket
+		))
 	end
 
 	---@param dbobj MySQLOODatabase
@@ -208,10 +212,10 @@ do -- MySQLOO
 	end
 
 	function db:Disconnect()
-		if self._db then
-			local db = self._db
+		local db = self._db
+		if db then
+			db:abortAllQueries()
 			self._db = nil -- Make sure this is nil /FIRST/ so any aborting queries don't try to restart it
-			db:AbortAllQueries()
 		end
 	end
 
@@ -220,18 +224,18 @@ do -- MySQLOO
 	---@return Promise
 	function db:qfail(errmsg, text)
 		local deferred = Deferred()
-		if self._db then
+		local db = self._db
+		if db then
 			local status = self._db:status()
-			-- DB is fine - you just fucked up.
 			if status == mysqloo.DATABASE_CONNECTED then
+				-- DB is fine - you just fucked up.
 				return deferred:Reject(errmsg)
-				-- DB fucked up, whoops
 			elseif status == mysqloo.DATABASE_INTERNAL_ERROR then
+				-- DB fucked up, whoops
 				ErrorNoHalt("The database has suffered an internal error!\n")
-				self:Connect() -- Full restart the db
-				-- DB timed out
+				self:Connect(self._cdata) -- Full restart the db
 			elseif status ~= mysqloo.DATABASE_CONNECTING then
-				local db = self._db
+				-- DB timed out
 				self._db = nil
 				timer.Simple(0, function() self:_connect(db); end)
 			end

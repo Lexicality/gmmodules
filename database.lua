@@ -144,26 +144,26 @@ local function queryFail(errmsg)
 end
 
 --- Runs a query
---- @param text string The query to run
+--- @param sql string The query to run
 --- @return Promise #A promise object for the query's result
-function Database:Query(text)
+function Database:Query(sql)
 	if not self:IsConnected() then
 		error("Cannot query a non-connected database!", 2)
 	end
-	return self._db:Query(text):Fail(queryFail)
+	return self._db:Query(sql):Fail(queryFail)
 end
 
 --- Prepares a query for future runnage with placeholders
---- @param text string The querytext, complete with sprintf placeholders
+--- @param sql string The querytext, complete with sprintf placeholders
 --- @return database.PreparedQuery A prepared query object
 --- @see PreparedQuery
-function Database:PrepareQuery(text)
-	if not text then
-		error("No query text specified!", 2)
+function Database:PrepareQuery(sql)
+	if not sql then
+		error("No query specified!", 2)
 	end
-	local _, narg = string.gsub(string.gsub(text, "%%%%", ""), "(%%[diouXxfFeEgGaAcsb])", "")
+	local _, narg = string.gsub(string.gsub(sql, "%%%%", ""), "(%%[diouXxfFeEgGaAcsb])", "")
 	return new(PreparedQuery, {
-		Text    = text,
+		Text    = sql,
 		DB      = self,
 		NumArgs = narg,
 	})
@@ -177,10 +177,10 @@ function Database:Disconnect()
 end
 
 --- Sanitise a string for insertion into the database
---- @param text string The string to santise
+--- @param value string The string to santise
 --- @return string A ensafened string
-function Database:Escape(text)
-	return self._db:Escape(text)
+function Database:Escape(value)
+	return self._db:Escape(value)
 end
 
 --- Checks to seee if Connect as been called and Disconnect hasn't
@@ -267,17 +267,17 @@ function PreparedQuery:Run()
 	if not self._db:IsConnected() then
 		error("Cannot execute query without a database!", 2)
 	end
-	local text
+	local sql
 	if self.NumArgs == 0 then
-		text = self.Text
+		sql = self.Text
 	else
-		text = self._prepedText
-		if not text then
+		sql = self._prepedText
+		if not sql then
 			error("Tried to run an unprepared query!", 2)
 		end
 	end
 
-	local p = self._db:Query(text)
+	local p = self._db:Query(sql)
 	-- Deal w/ callbacks
 	local _ca = self._callbackArgs
 	if self._cDone then

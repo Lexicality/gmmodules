@@ -115,24 +115,24 @@ do -- TMySQL
 		end
 	end
 
-	---@param text string
+	---@param sql string
 	---@return Promise
-	function db:Query(text)
+	function db:Query(sql)
 		if not self._db then
 			error("Cannot query without a database connected!")
 		end
 		local deferred = Deferred()
-		self._db:Query(text, mcallback, deferred)
+		self._db:Query(sql, mcallback, deferred)
 		return deferred:Promise()
 	end
 
-	---@param text string
+	---@param value string
 	---@return string
-	function db:Escape(text)
+	function db:Escape(value)
 		if not self._db then
 			error("There is no database open to do this!")
 		end
-		return self._db:Escape(text)
+		return self._db:Escape(value)
 	end
 
 	function db:IsConnected()
@@ -174,7 +174,7 @@ do -- MySQLOO
 	end
 
 	--- @class  database.MySQLOODriver:  database.Driver
-	--- @field private _queue {text: string, deferred: Deferred}[]
+	--- @field private _queue {sql: string, deferred: Deferred}[]
 	--- @field private _db? MySQLOODatabase
 	--- @field private _cdata?  database.ConnectionInfo
 	local db = {
@@ -209,7 +209,7 @@ do -- MySQLOO
 		dbobj.onConnected = function(dbobj)
 			self._db = dbobj
 			for _, q in pairs(self._queue) do
-				self:Query(q.text, q.deferred)
+				self:Query(q.sql, q.deferred)
 			end
 			self._queue = {}
 			deferred:Resolve(self)
@@ -231,9 +231,9 @@ do -- MySQLOO
 	end
 
 	---@param errmsg string
-	---@param text string
+	---@param sql string
 	---@return Promise
-	function db:qfail(errmsg, text)
+	function db:qfail(errmsg, sql)
 		local deferred = Deferred()
 		local db = self._db
 		if db then
@@ -251,21 +251,21 @@ do -- MySQLOO
 				timer.Simple(0, function() self:_connect(db); end)
 			end
 		end
-		table.insert(self._queue, { text = text, deferred = deferred })
+		table.insert(self._queue, { sql = sql, deferred = deferred })
 		return deferred:Promise()
 	end
 
-	---@param text string
+	---@param sql string
 	---@param deferred? Deferred
 	---@return Promise
-	function db:Query(text, deferred)
+	function db:Query(sql, deferred)
 		if not self._db then
 			error("Cannot query without a database connected!")
 		end
 		deferred = deferred or Deferred()
-		local q = self._db:query(text)
+		local q = self._db:query(sql)
 		if not q then
-			return self:qfail("The DB is not connected!", text)
+			return self:qfail("The DB is not connected!", sql)
 		end
 		--- @cast q  database.MySQLOOQuery
 		q.onError   = mysqloono
@@ -273,19 +273,19 @@ do -- MySQLOO
 		q.onData    = mysqloodata
 		q.deferred  = deferred
 		q:start()
-		deferred:Then(nil, function(errmsg) return self:qfail(errmsg, text) end)
+		deferred:Then(nil, function(errmsg) return self:qfail(errmsg, sql) end)
 		-- I can't remember if queries are light userdata or not. If they are, this will break.
 		-- table.insert( activeQueries, q )
 		return deferred:Promise()
 	end
 
-	---@param text string
+	---@param value string
 	---@return string
-	function db:Escape(text)
+	function db:Escape(value)
 		if not self._db then
 			error("There is no database open to do this!")
 		end
-		return self._db:escape(text)
+		return self._db:escape(value)
 	end
 
 	-- function db:IsConnected()
@@ -334,11 +334,11 @@ do -- SQLite
 	function db:Disconnect()
 	end
 
-	---@param text string
+	---@param sql string
 	---@return Promise
-	function db:Query(text)
+	function db:Query(sql)
 		local deferred = Deferred()
-		local results = sqlite.Query(text)
+		local results = sqlite.Query(sql)
 		if results then
 			for _, result in ipairs(results) do
 				deferred:Notify(result)
@@ -354,10 +354,10 @@ do -- SQLite
 		return true
 	end
 
-	---@param text string
+	---@param value string
 	---@return string
-	function db:Escape(text)
-		return sqlite.SQLStr(text)
+	function db:Escape(value)
+		return sqlite.SQLStr(value)
 	end
 
 	function db.CanSelect()

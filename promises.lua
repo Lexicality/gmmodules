@@ -110,7 +110,7 @@ local Promise = {
 function Promise:Then(done, fail, prog)
 	--- @type Deferred
 	local def = new(Deferred)
-	if type(done) == "function" then
+	if type(done) == "function" or (_TEST and done) then
 		local d = done
 		done = function(...)
 			local ret = { pcall(d, ...) }
@@ -131,7 +131,7 @@ function Promise:Then(done, fail, prog)
 	else
 		done = function(...) return def:Resolve(...) end
 	end
-	if type(fail) == "function" then
+	if type(fail) == "function" or (_TEST and fail) then
 		local f = fail
 		fail = function(...)
 			local ret = { pcall(f, ...) }
@@ -153,7 +153,7 @@ function Promise:Then(done, fail, prog)
 		fail = function(...) return def:Reject(...) end
 	end
 	-- Promises/A barely mentions progress handlers, so I've just made this up.
-	if type(prog) == "function" then
+	if type(prog) == "function" or (_TEST and prog) then
 		local p = prog
 		prog = function(...)
 			local ret = { pcall(p, ...) }

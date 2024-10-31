@@ -75,13 +75,13 @@ do -- TMySQL
 		end
 	end
 
-	--- @class DatabaseTMySQLDriver: DatabaseDriver
+	--- @class  database.TMySQLDriver:  database.Driver
 	--- @field private _db? TMySQLDB
 	local db = {
 		Name = "TMySQL",
 	}
 
-	---@param tab DatabaseConnectionInfo
+	---@param tab  database.ConnectionInfo
 	---@return Promise
 	function db:Connect(tab)
 		local deferred = Deferred()
@@ -151,32 +151,32 @@ do -- TMySQL
 	drivers.tmysql = db
 end
 do -- MySQLOO
-	--- @class DatabaseMySQLOOQuery : MySQLOOQuery
+	--- @class  database.MySQLOOQuery : MySQLOOQuery
 	--- @field deferred Deferred
 
 	local mysqlooyes, mysqloono, mysqlooack, mysqloodata
-	---@param query DatabaseMySQLOOQuery
+	---@param query  database.MySQLOOQuery
 	---@param results MySQLOOResults
 	function mysqlooyes(query, results)
 		query.deferred:Resolve(results)
 	end
 
-	---@param query DatabaseMySQLOOQuery
+	---@param query  database.MySQLOOQuery
 	---@param err string
 	function mysqloono(query, err)
 		query.deferred:Reject(err)
 	end
 
-	---@param query DatabaseMySQLOOQuery
+	---@param query  database.MySQLOOQuery
 	---@param result MySQLOOResult
 	function mysqloodata(query, result)
 		query.deferred:Notify(result)
 	end
 
-	--- @class DatabaseMySQLOODriver: DatabaseDriver
+	--- @class  database.MySQLOODriver:  database.Driver
 	--- @field private _queue {text: string, deferred: Deferred}[]
 	--- @field private _db? MySQLOODatabase
-	--- @field private _cdata? DatabaseConnectionInfo
+	--- @field private _cdata?  database.ConnectionInfo
 	local db = {
 		Name = "MySQLOO",
 	}
@@ -185,7 +185,7 @@ do -- MySQLOO
 		self._queue = {}
 	end
 
-	---@param cdata DatabaseConnectionInfo
+	---@param cdata  database.ConnectionInfo
 	---@return Promise
 	function db:Connect(cdata)
 		if self._db then
@@ -267,7 +267,7 @@ do -- MySQLOO
 		if not q then
 			return self:qfail("The DB is not connected!", text)
 		end
-		--- @cast q DatabaseMySQLOOQuery
+		--- @cast q  database.MySQLOOQuery
 		q.onError   = mysqloono
 		q.onSuccess = mysqlooyes
 		q.onData    = mysqloodata
@@ -318,12 +318,12 @@ do -- MySQLOO
 	drivers.mysqloo = db
 end
 do -- SQLite
-	--- @class DatabaseSQLiteDriver : DatabaseDriver
+	--- @class  database.SQLiteDriver :  database.Driver
 	local db = {
 		Name = "SQLite",
 	}
 
-	---@param _ DatabaseConnectionInfo
+	---@param _  database.ConnectionInfo
 	---@return Promise
 	function db:Connect(_)
 		local deferred = Deferred()

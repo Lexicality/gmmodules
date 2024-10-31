@@ -39,7 +39,7 @@ end
 --- @see database.NewDatabase
 local database = {}
 
---- @class DatabaseConnectionInfo
+--- @class database.ConnectionInfo
 --- @field Hostname string
 --- @field Username string
 --- @field Password string
@@ -49,10 +49,10 @@ local database = {}
 --- @field DBMethod? string
 --- @field EnableSQLite? boolean
 
---- @class DatabaseDriver
+--- @class database.Driver
 --- @field Name string
 --- @field Init? fun(self): nil
---- @field Connect fun(self, info: DatabaseConnectionInfo): Promise
+--- @field Connect fun(self, info: database.ConnectionInfo): Promise
 --- @field Disconnect fun(self): nil
 --- @field Query fun(self, sql: string): Deferred
 --- @field Escape fun(self, value: string): string
@@ -60,13 +60,21 @@ local database = {}
 --- @field CanSelect fun(self): boolean
 
 --- The main Database object the developer will generally be interacting with
---- @class Database
---- @field private _db DatabaseDriver
+--- @class database.Database
+--- @field private _db database.Driver
 local Database = {}
 
 --- A client-side prepared query object.
---- @class DatabasePreparedQuery
---- @see Database.PrepareQuery
+--- @class database.PreparedQuery
+--- @field private _db database.Driver
+--- @field private Text string
+--- @field private NumArgs number
+--- @field private _cDone function | nil
+--- @field private _cFail function | nil
+--- @field private _cProg function | nil
+--- @field private _callbackArgs any[] | nil
+--- @field private _preped boolean | nil
+--- @field private _prepedText string | nil
 local PreparedQuery = {}
 
 --- Does a basic form of OO
@@ -102,9 +110,9 @@ end
 --
 
 --- CTor. Accepts the variables passed to NewDatabase
---- @see NewDatabase
---- @param tab DatabaseConnectionInfo connection details
---- @param db DatabaseDriver the selected driver
+--- @see database.NewDatabase
+--- @param tab database.ConnectionInfo connection details
+--- @param db database.Driver the selected driver
 function Database:Init(tab, db)
 	self._conargs = tab
 	self._db = db
@@ -124,7 +132,7 @@ end
 
 --- Connects with the stored args
 --- @return Promise #object for the DB connection
---- @see NewDatabase
+--- @see database.NewDatabase
 function Database:Connect()
 	return self._db:Connect(self._conargs)
 		:Then(function(_) return self; end) -- Replace the dbobject with ourself
@@ -147,7 +155,7 @@ end
 
 --- Prepares a query for future runnage with placeholders
 --- @param text string The querytext, complete with sprintf placeholders
---- @return DatabasePreparedQuery A prepared query object
+--- @return database.PreparedQuery A prepared query object
 --- @see PreparedQuery
 function Database:PrepareQuery(text)
 	if not text then
@@ -262,10 +270,11 @@ function PreparedQuery:Run()
 	local text
 	if self.NumArgs == 0 then
 		text = self.Text
-	elseif not self._preped then
-		error("Tried to run an unprepared query!", 2)
 	else
 		text = self._prepedText
+		if not text then
+			error("Tried to run an unprepared query!", 2)
+		end
 	end
 
 	local p = self._db:Query(text)
@@ -291,7 +300,7 @@ local SQLITE_NAME = "sqlite"
 
 --- Finds the first enabled database method
 --- @param enable_sqlite? boolean Wether or not SQLite is acceptable
---- @return DatabaseDriver #The name of the DB method or false if none are available
+--- @return database.Driver #The name of the DB method or false if none are available
 local function findFirstAvailableDBMethod(enable_sqlite)
 	for name, method in pairs(registeredDatabaseMethods) do
 		if name ~= SQLITE_NAME and method.CanSelect() then
@@ -327,8 +336,8 @@ end
 ---     :Done(function() end) -- DB Connected
 ---     :Fail(function(err) end) -- DB could not connect. (Will trigger an error + server log automatically)
 --- ```
---- @param connection DatabaseConnectionInfo A table composed of the following fields:
---- @return Database #A Database object
+--- @param connection database.ConnectionInfo A table composed of the following fields:
+--- @return database.Database #A Database object
 function database.NewDatabase(connection)
 	if type(connection) ~= "table" then
 		error("Invalid connection data passed!", 2)
@@ -342,7 +351,7 @@ function database.NewDatabase(connection)
 	req(connection, "Port")
 
 	local db_name = connection.DBMethod
-	--- @type DatabaseDriver
+	--- @type database.Driver
 	local db_driver
 	if type(db_name) == "string" then
 		db_driver = registeredDatabaseMethods[string.lower(db_name)]
@@ -359,7 +368,7 @@ end
 
 --- Creates and returns a new instance of a DB method
 --- @param name string The name to instantatiationonate
---- @return DatabaseDriver  #An instance if it worked, false and an error message if it didn't
+--- @return database.Driver  #An instance if it worked, false and an error message if it didn't
 function database.GetNewDBMethod(name)
 	local s, e = database.IsValidDBMethod(name)
 	if not s then
@@ -375,7 +384,7 @@ local function req(tab, name)
 end
 
 --- Registers a new Database method for usage
---- @param tab DatabaseDriver The __index metatable for instances to have
+--- @param tab database.Driver The __index metatable for instances to have
 function database.RegisterDBMethod(tab)
 	req(tab, "Name")
 	req(tab, "Connect")
@@ -391,7 +400,7 @@ end
 if _TEST then
 	database._registeredDatabaseMethods = registeredDatabaseMethods
 	database._findFirstAvailableDBMethod = findFirstAvailableDBMethod
-	database._Database = Database
+	database._Database = database.Database
 	database._PreparedQuery = PreparedQuery
 	database._new = new
 	database._bind = bind

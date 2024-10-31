@@ -110,7 +110,7 @@ if not serverip then -- Thanks raBBish! http://www.facepunch.com/showpost.php?p=
 end
 
 --[[ Tables ]] --
-local admins, adminsByID, adminGroups, database
+local admins, adminsByID, adminGroups
 local _queries = {
 	-- BanChkr
 	["Check for Bans"] = (
@@ -395,7 +395,7 @@ end
 function doUnban(query, id, reason, admin)
 	local aid = getAdminDetails(admin)
 	return query
-		:Prepare(config.dbprefix, aid, database:escape(reason), id)
+		:Prepare(config.dbprefix, aid, reason, id)
 		:SetCallbackArgs(id)
 		:Run()
 end

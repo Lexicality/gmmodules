@@ -154,11 +154,11 @@ local idLookup = {}
 
 --[[ ENUMs ]] --
 -- Sourcebans
-FLAG_BAN    = "d"
-FLAG_PERMA  = "e"
-FLAG_UNBAN  = "e"
-FLAG_ADDBAN = "m"
-FLAG_CHAT   = "j"
+sourcebans.FLAG_BAN    = "d"
+sourcebans.FLAG_PERMA  = "e"
+sourcebans.FLAG_UNBAN  = "e"
+sourcebans.FLAG_ADDBAN = "m"
+sourcebans.FLAG_CHAT   = "j"
 
 --[[ Convenience Functions ]] --
 local function notifyerror(...)
@@ -773,3 +773,5 @@ end
 function sourcebans.ReloadAdmins()
 	loadAdmins()
 end
+
+return sourcebans

@@ -39,7 +39,10 @@ local mockDB = {
 		return text
 	end,
 	["Query"] = function()
-		return Deferred():Reject("This method should be overriden!"):Promise()
+		return Deferred():Resolve():Promise()
+	end,
+	["PrepareAndRun"] = function()
+		return Deferred():Resolve():Promise()
 	end,
 	["CanSelect"] = function()
 		return true
@@ -53,6 +56,7 @@ local invalidDB = {
 	["IsConnected"] = function() end,
 	["Escape"] = function() end,
 	["Query"] = function() end,
+	["PrepareAndRun"] = function() end,
 	["CanSelect"] = function() return false; end,
 }
 
@@ -63,6 +67,7 @@ local emptyDB = {
 	["IsConnected"] = function() end,
 	["Escape"] = function() end,
 	["Query"] = function() end,
+	["PrepareAndRun"] = function() end,
 	["CanSelect"] = function() return true; end,
 }
 
@@ -151,9 +156,10 @@ describe("_bindCArgs", function()
 	it("should return a function that unpacks the passed arugments into it as the second arguments", function()
 		local func = spy.new(function() end)
 		local one, two, three, four = "one", "two", "three", "four"
+		---@diagnostic disable-next-line: param-type-mismatch
 		local func2 = database._bindCArgs(func, { two, three })
 		assert.are_not.equal(func, func2)
-		---@diagnostic disable-next-line: redundant-parameter
+		---@diagnostic disable-next-line: redundant-parameter, need-check-nil
 		func2(one, four)
 		assert.spy(func).was.called(1)
 		assert.spy(func).was.called_with(one, two, three)
@@ -543,11 +549,13 @@ describe("PreparedQuery", function()
 	local one, two, three = "one", "two", "three"
 	before_each(function()
 		mockObj = mock(copy(mockDB))
-		mockObj.Query = spy.new(function(...)
+		local function mockQuery(...)
 			local def = Deferred()
 			queryFunc(def, ...)
 			return def:Promise()
-		end)
+		end
+		mockObj.Query = spy.new(mockQuery)
+		mockObj.PrepareAndRun = spy.new(mockQuery)
 		queryFunc = function(def)
 
 		end
@@ -592,7 +600,7 @@ describe("PreparedQuery", function()
 			assert.spy(done).was.called_with(one)
 			assert.spy(fail).was.called(0)
 		end)
-		it("calls the fail callback on a successful query", function()
+		it("calls the fail callback on a failed query", function()
 			queryFunc = function(def)
 				def:Reject(one)
 			end
@@ -769,60 +777,6 @@ describe("PreparedQuery", function()
 			assert.spy(done).was.called_with(one)
 		end)
 	end)
-	describe(":Prepare", function()
-		local one, two, three = "one", "two", "three"
-		it("does nothing if the query has no placeholders", function()
-			local qtext = "my prepared query"
-			local query = db:PrepareQuery(qtext)
-			query:Prepare(one, two)
-			query:Run()
-			assert.spy(mockObj.Query).was.called(1)
-			assert.spy(mockObj.Query).was.called_with(mockObj, qtext)
-		end)
-		it("calls Database:Escape for each arg", function()
-			local query = db:PrepareQuery("%s %s %s")
-			query:Prepare(one, two, three)
-			assert.spy(mockObj.Escape).was.called(3)
-			assert.spy(mockObj.Escape).was.called_with(mockObj, one)
-			assert.spy(mockObj.Escape).was.called_with(mockObj, two)
-			assert.spy(mockObj.Escape).was.called_with(mockObj, three)
-		end)
-		it("errors if there are more placeholders than args", function()
-			local query = db:PrepareQuery("%s %s")
-			assert.has.error(function() query:Prepare(one) end)
-		end)
-		it("silently discards extra args", function()
-			local query = db:PrepareQuery("%s")
-			assert.has_no.error(function() query:Prepare(one, two) end)
-			query:Run()
-			assert.spy(mockObj.Query).was.called(1)
-			assert.spy(mockObj.Query).was.called_with(mockObj, one)
-		end)
-		it("overwrites a previous prepared state", function()
-			local query = db:PrepareQuery("%s")
-			query:Prepare(one)
-			query:Prepare(two)
-			query:Run()
-			assert.spy(mockObj.Query).was.called(1)
-			assert.spy(mockObj.Query).was.called_with(mockObj, two)
-			assert.spy(mockObj.Query).was.not_called_with(mockObj, one)
-		end)
-		it("sprintfs arguments into the query", function()
-			local qtext = '"% 5s" %02.2f %d'
-			local pi = 3.141596
-			local query = db:PrepareQuery(qtext)
-			query:Prepare(one, pi, pi)
-			query:Run()
-			assert.spy(mockObj.Query).was.called(1)
-			assert.spy(mockObj.Query).was.called_with(mockObj, string.format(qtext, one, pi, pi))
-		end)
-		it("is only valid for a single run", function()
-			local query = db:PrepareQuery("%s")
-			query:Prepare(one)
-			query:Run()
-			assert.has.error(function() query:Run() end)
-		end)
-	end)
 	describe(":Run", function()
 		-- TODO: Query Queue!
 		it("throws an error if the database has disconnected", function()
@@ -834,7 +788,7 @@ describe("PreparedQuery", function()
 			IsConnected = false
 			assert.has.error(function() query:Run() end)
 		end)
-		it("executes instantly if the query has no placeholders", function()
+		it("It calls :Query if there are no parameters", function()
 			local qtext = "foobar"
 			local query = db:PrepareQuery(qtext)
 			assert.has_no.error(function() query:Run() end)
@@ -842,16 +796,13 @@ describe("PreparedQuery", function()
 			assert.spy(mockObj.Query).was.called_with(mockObj, qtext)
 			assert.spy(mockObj.Escape).was.called(0)
 		end)
-		it("throws an error if the query has placeholders and hasn't been prepared", function()
-			local query = db:PrepareQuery("%s")
-			assert.has.error(function() query:Run() end)
-		end)
-		it("calls Database:Query", function()
+		it("It calls :PrepareAndRun if there are parameters", function()
 			local qtext = "foobar"
 			local query = db:PrepareQuery(qtext)
-			query:Run()
-			assert.spy(mockObj.Query).was.called(1)
-			assert.spy(mockObj.Query).was.called_with(mockObj, qtext)
+			assert.has_no.error(function() query:Run(1, 2) end)
+			assert.spy(mockObj.PrepareAndRun).was.called(1)
+			assert.spy(mockObj.PrepareAndRun).was.called_with(mockObj, qtext, 1, 2)
+			assert.spy(mockObj.Escape).was.called(0)
 		end)
 		it("returns a promise", function()
 			local query = db:PrepareQuery("foobar")

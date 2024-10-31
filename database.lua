@@ -54,10 +54,11 @@ local database = {}
 --- @field Init? fun(self): nil
 --- @field Connect fun(self, info: database.ConnectionInfo): Promise
 --- @field Disconnect fun(self): nil
---- @field Query fun(self, sql: string): Deferred
+--- @field Query fun(self, sql: string): Promise
 --- @field Escape fun(self, value: string): string
 --- @field IsConnected fun(self): boolean
 --- @field CanSelect fun(self): boolean
+--- @field PrepareAndRun fun(self, sql: string, ...: any): Promise
 
 --- The main Database object the developer will generally be interacting with
 --- @class database.Database
@@ -66,15 +67,12 @@ local Database = {}
 
 --- A client-side prepared query object.
 --- @class database.PreparedQuery
---- @field private _db database.Driver
---- @field private Text string
---- @field private NumArgs number
+--- @field private _db database.Database
+--- @field private _sql string
 --- @field private _cDone function | nil
 --- @field private _cFail function | nil
 --- @field private _cProg function | nil
 --- @field private _callbackArgs any[] | nil
---- @field private _preped boolean | nil
---- @field private _prepedText string | nil
 local PreparedQuery = {}
 
 --- Does a basic form of OO
@@ -145,12 +143,19 @@ end
 
 --- Runs a query
 --- @param sql string The query to run
+--- @param ... any The arguments to pass to the query
 --- @return Promise #A promise object for the query's result
-function Database:Query(sql)
+function Database:Query(sql, ...)
 	if not self:IsConnected() then
 		error("Cannot query a non-connected database!", 2)
 	end
-	return self._db:Query(sql):Fail(queryFail)
+	local promise
+	if ... == nil then
+		promise = self._db:Query(sql)
+	else
+		promise = self._db:PrepareAndRun(sql, ...)
+	end
+	return promise:Fail(queryFail)
 end
 
 --- Prepares a query for future runnage with placeholders
@@ -161,12 +166,7 @@ function Database:PrepareQuery(sql)
 	if not sql then
 		error("No query specified!", 2)
 	end
-	local _, narg = string.gsub(string.gsub(sql, "%%%%", ""), "(%%[diouXxfFeEgGaAcsb])", "")
-	return new(PreparedQuery, {
-		Text    = sql,
-		DB      = self,
-		NumArgs = narg,
-	})
+	return new(PreparedQuery, sql, self)
 end
 
 -- Forwarded functions
@@ -194,12 +194,12 @@ end
 --
 
 --- CTor. Only ever called by Database:PrepareQuery
---- @param qargs table data from the mothership
+---@param sql string
+---@param db database.Database
 --- @see Database:PrepareQuery
-function PreparedQuery:Init(qargs)
-	self._db     = qargs.DB
-	self.Text    = qargs.Text
-	self.NumArgs = qargs.NumArgs
+function PreparedQuery:Init(sql, db)
+	self._db  = db
+	self._sql = sql
 end
 
 --- Set persistant callbacks to be called for every invocation.
@@ -232,67 +232,36 @@ function PreparedQuery:SetCallbackArgs(...)
 	return self
 end
 
---- Prepares the query for the next invocation.
---- @param ... any The arguments to escape and sprintf into the query
-function PreparedQuery:Prepare(...)
-	if self.NumArgs == 0 then
-		return
-	end
-	self._preped = true
-	local args = { ... }
-	local nargs = #args
-	if nargs < self.NumArgs then
-		error("Argument count missmatch! Expected " .. self.NumArgs .. " but only received " .. nargs .. "!", 2)
-	end
-	for i, arg in pairs(args) do
-		args[i] = self._db:Escape(arg)
-	end
-	self._prepedText = string.format(self.Text, ...)
-	return self
-end
-
+---@param func function|nil
+---@param cargs any[]|nil
+---@return function|nil
 local function bindCArgs(func, cargs)
-	if not cargs then
+	if not func or not cargs then
 		return func
-	else
-		return function(res)
-			func(res, unpack(cargs))
-		end
+	end
+
+	return function(res)
+		func(res, unpack(cargs))
 	end
 end
 
 --- Run a prepared query (and then reset it so it can be re-prepared with new data)
+--- @param ... any The arguments to pass to the query
 --- @return Promise #A promise object for the query's data
-function PreparedQuery:Run()
+function PreparedQuery:Run(...)
 	if not self._db:IsConnected() then
 		error("Cannot execute query without a database!", 2)
 	end
-	local sql
-	if self.NumArgs == 0 then
-		sql = self.Text
-	else
-		sql = self._prepedText
-		if not sql then
-			error("Tried to run an unprepared query!", 2)
-		end
-	end
-
-	local p = self._db:Query(sql)
-	-- Deal w/ callbacks
-	local _ca = self._callbackArgs
-	if self._cDone then
-		p:Done(bindCArgs(self._cDone, _ca))
-	end
-	if self._cFail then
-		p:Fail(bindCArgs(self._cFail, _ca))
-	end
-	if self._cProg then
-		p:Progress(bindCArgs(self._cProg, _ca))
-	end
-	-- Reset state
-	self._preped = false
+	local callbackArgs = self._callbackArgs
 	self._callbackArgs = nil
-	return p
+	return self._db
+		:Query(self._sql, ...)
+		:Then(
+			bindCArgs(self._cDone, callbackArgs),
+			bindCArgs(self._cFail, callbackArgs),
+			bindCArgs(self._cProg, callbackArgs)
+		)
+		:Fail(queryFail)
 end
 
 local registeredDatabaseMethods = {}
@@ -381,6 +350,7 @@ function database.RegisterDBMethod(tab)
 	req(tab, "IsConnected")
 	req(tab, "Escape")
 	req(tab, "Query")
+	req(tab, "PrepareAndRun")
 	req(tab, "CanSelect")
 	registeredDatabaseMethods[string.lower(tab.Name)] = tab
 end

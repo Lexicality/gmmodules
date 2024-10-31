@@ -77,9 +77,14 @@ do -- TMySQL
 
 	--- @class  database.TMySQLDriver:  database.Driver
 	--- @field private _db? TMySQLDB
+	--- @field private _prepared TMySQLPreparedStatement[]
 	local db = {
 		Name = "TMySQL",
 	}
+
+	function db:Init()
+		self._prepared = {}
+	end
 
 	---@param tab  database.ConnectionInfo
 	---@return Promise
@@ -113,6 +118,7 @@ do -- TMySQL
 			self._db:Disconnect()
 			self._db = nil
 		end
+		self._prepared = {}
 	end
 
 	---@param sql string
@@ -123,6 +129,28 @@ do -- TMySQL
 		end
 		local deferred = Deferred()
 		self._db:Query(sql, mcallback, deferred)
+		return deferred:Promise()
+	end
+
+	---@param sql string
+	---@param ... any
+	---@return Promise
+	function db:PrepareAndRun(sql, ...)
+		local deferred = Deferred()
+		local query = self._prepared[sql]
+		if not query or not query:IsValid() then
+			local reason
+			query, reason = self._db:Prepare(sql)
+			if not query then
+				return deferred:Reject(reason):Promise()
+			end
+			self._prepared[sql] = query
+		end
+		-- For some insane reason `Run` takes the vararg *FIRST* so we need to muck about with
+		local args = { ... }
+		table.insert(args, mcallback)
+		table.insert(args, deferred)
+		query:Run(unpack(args))
 		return deferred:Promise()
 	end
 
@@ -279,6 +307,42 @@ do -- MySQLOO
 		return deferred:Promise()
 	end
 
+	---@param sql string
+	---@param ... any
+	---@return Promise
+	function db:PrepareAndRun(sql, ...)
+		local q = self._db:prepare(sql)
+		local idx = 1
+		for value in ... do
+			local value_type = type(value)
+			if value_type == "nil" then
+				q:setNull(idx)
+			elseif value_type == "number" then
+				q:setNumber(idx, value)
+			elseif value_type == "boolean" then
+				q:setBoolean(idx, value)
+			else
+				q:setString(idx, tostring(value))
+			end
+			idx = idx + 1
+		end
+		local deferred = Deferred()
+		---@diagnostic disable-next-line: inject-field
+		q.deferred     = deferred
+		q.onError      = mysqloono
+		q.onSuccess    = mysqlooyes
+		q.onData       = mysqloodata
+
+		q:start()
+		deferred:Then(
+			nil,
+			function(errmsg)
+				return self:qfail(errmsg, sql)
+			end
+		)
+		return deferred:Promise()
+	end
+
 	---@param value string
 	---@return string
 	function db:Escape(value)
@@ -348,6 +412,25 @@ do -- SQLite
 			deferred:Reject(sqlite.LastError())
 		end
 		return deferred:Promise()
+	end
+
+	---@param sql string
+	---@param ... any
+	---@return Promise
+	function db:PrepareAndRun(sql, ...)
+		local values = { ... }
+		-- good fucking luck if your query has a ? in a string in it
+		local encoded = string.gsub(sql, "%?", function(_)
+			local value = table.remove(values, 1)
+			local value_type = type(value)
+			if value_type == "nil" then
+				return "NULL"
+			elseif value_type == "number" or value_type == "boolean" then
+				return tostring(value)
+			end
+			return '"' + self:Escape(tostring(value)) + '"'
+		end)
+		return self:Query(encoded)
 	end
 
 	function db:IsConnected()

@@ -366,17 +366,6 @@ function database.NewDatabase(connection)
 	return new(Database, connection, new(db_driver))
 end
 
---- Creates and returns a new instance of a DB method
---- @param name string The name to instantatiationonate
---- @return database.Driver  #An instance if it worked, false and an error message if it didn't
-function database.GetNewDBMethod(name)
-	local s, e = database.IsValidDBMethod(name)
-	if not s then
-		error("Cannot use database method '" .. name .. "': " .. e, 2)
-	end
-	return new(database.GetDBMethod(name))
-end
-
 local function req(tab, name)
 	if not tab[name] then
 		error("You're missing '" .. name .. "' from the database methods!", 3)

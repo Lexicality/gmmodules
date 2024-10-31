@@ -10,12 +10,13 @@ return {
 	["runreport"] = true,
 
 	-- Delete stats file after reporting?
-	["deletestats"] = true,
+	["deletestats"] = false,
 
 	["include"] = {},
 
 	-- Patterns for files to exclude when reporting
 	["exclude"] = {
+		"^/usr/",
 		"luacov$",
 		"luacov/reporter$",
 		"luacov/defaults$",

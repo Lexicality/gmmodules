@@ -146,8 +146,8 @@ local rawQueries = {
 			)
 			AND `removetype` IS NULL
 			AND (
-				`authid` = '%s'
-				OR `ip` = '%s'
+				`authid` = ?
+				OR `ip` = ?
 			)
 		LIMIT 1
 	]],
@@ -166,7 +166,7 @@ local rawQueries = {
 	--             OR `ends` > UNIX_TIMESTAMP()
 	--         )
 	--         AND `removetype` IS NULL
-	--         AND `ip` = '%s'
+	--         AND `ip` = ?
 	--     LIMIT 1
 	-- ]],
 	["Check for Bans by SteamID"] = [[--sql
@@ -184,7 +184,7 @@ local rawQueries = {
 				OR `ends` > UNIX_TIMESTAMP()
 			)
 			AND `removetype` IS NULL
-			AND `authid` = '%s'
+			AND `authid` = ?
 		LIMIT 1
 	]],
 	["Get All Active Bans"] = [[--sql
@@ -224,8 +224,8 @@ local rawQueries = {
 				OR ends > UNIX_TIMESTAMP()
 			)
 			AND removetype IS NULL
-		LIMIT %d
-		OFFSET %d;
+		LIMIT ?
+		OFFSET ?;
 	]],
 
 	["Log Join Attempt"] = [[--sql
@@ -237,10 +237,10 @@ local rawQueries = {
 			`bid`
 		)
 		VALUES (
-			%i,
-			%i,
-			'%s',
-			%i
+			?,
+			?,
+			?,
+			?
 		)
 	]],
 
@@ -265,7 +265,7 @@ local rawQueries = {
 			`%s_admins` AS `a`,
 			`%s_admins_servers_groups` AS `g`
 		WHERE
-			`g`.`server_id` = %i
+			`g`.`server_id` = ?
 			AND `g`.`admin_id` = `a`.`aid`
 	]],
 
@@ -276,8 +276,8 @@ local rawQueries = {
 		FROM
 			`%s_servers`
 		WHERE
-			`ip` = '%s'
-			AND `port` = '%s'
+			`ip` = ?
+			AND `port` = ?
 		LIMIT 1
 	]],
 
@@ -300,16 +300,16 @@ local rawQueries = {
 		)
 		VALUES
 		(
-			'%s',
-			'%s',
-			'%s',
-			%i,
-			%i,
-			%i,
-			'%s',
-			%i,
-			'%s',
-			%i,
+			?,
+			?,
+			?,
+			?,
+			?,
+			?,
+			?,
+			?,
+			?,
+			?,
 			' '
 		)
 	]],
@@ -318,33 +318,33 @@ local rawQueries = {
 		UPDATE
 			`%s_bans`
 		SET
-			`RemovedBy` = %i,
+			`RemovedBy` = ?,
 			`RemoveType` = 'U',
 			`RemovedOn` = UNIX_TIMESTAMP(),
-			`ureason` = '%s'
+			`ureason` = ?
 		WHERE
 			(
 				`length` = 0
 				OR `ends` > UNIX_TIMESTAMP()
 			)
 			AND `removetype` IS NULL
-			AND `authid` = '%s'
+			AND `authid` = ?
 	]],
 	["Unban IPAddress"] = [[--sql
 		UPDATE
 			`%s_bans`
 		SET
-			`RemovedBy` = %i,
+			`RemovedBy` = ?,
 			`RemoveType` = 'U',
 			`RemovedOn` = UNIX_TIMESTAMP(),
-			`ureason` = '%s'
+			`ureason` = ?
 		WHERE
 		(
 			`length` = 0
 			OR `ends` > UNIX_TIMESTAMP()
 		)
 		AND `removetype` IS NULL
-		AND `ip` = '%s'
+		AND `ip` = ?
 	]],
 }
 local idLookup = {}
@@ -467,7 +467,7 @@ local queries = {}
 
 local function setupQueries()
 	for key, qtext in pairs(rawQueries) do
-		queries[key] = db:PrepareQuery(qtext)
+		queries[key] = db:PrepareQuery(string.format(qtext, config.dbprefix))
 	end
 
 	queries["Check for Bans"]:SetCallbacks({
@@ -477,9 +477,8 @@ local function setupQueries()
 			kickid(steamID)
 			banid(steamID)
 			queries["Log Join Attempt"]
-				:Prepare(config.dbprefix, config.serverid, os.time(), name, data.bid)
 				:SetCallbackArgs(name)
-				:Run()
+				:Run(config.serverid, os.time(), name, data.bid)
 		end,
 		Fail = errCallback("check %s's ban status"),
 	})
@@ -509,8 +508,7 @@ local function setupQueries()
 			end
 			notifymessage("Loading Admins . . .")
 			queries["Select Admins"]
-				:Prepare(config.dbprefix, config.dbprefix, config.serverid)
-				:Run()
+				:Run(config.serverid)
 		end,
 		Fail = errCallback("load admin groups"),
 	})
@@ -566,9 +564,8 @@ end
 local function checkBan(ply) -- steamID, ip, name )
 	local steamID = ply:SteamID()
 	return queries["Check for Bans"]
-		:Prepare(config.dbprefix, steamID, getIP(ply))
 		:SetCallbackArgs(ply:Name(), steamID)
-		:Run()
+		:Run(steamID, getIP(ply))
 end
 
 ---@return Promise
@@ -583,7 +580,6 @@ local function loadAdmins()
 
 	notifymessage("Loading Admin Groups . . .")
 	return queries["Select Admin Groups"]
-		:Prepare(config.dbprefix)
 		:Run()
 end
 
@@ -607,8 +603,7 @@ local function startDatabase(deferred)
 		:Then(function()
 			if config.serverid < 0 then
 				return queries["Look up serverID"]
-					:Prepare(config.dbprefix, serverip, serverport)
-					:Run()
+					:Run(serverip, serverport)
 			end
 		end)
 		:Done(function()
@@ -629,9 +624,8 @@ end
 local function doUnban(query, id, reason, admin)
 	local aid = getAdminDetails(admin)
 	return query
-		:Prepare(config.dbprefix, aid, reason, id)
 		:SetCallbackArgs(id)
-		:Run()
+		:Run(aid, reason, id)
 end
 
 ---@param steamID SteamID
@@ -647,10 +641,9 @@ local function doBan(steamID, ip, name, length, reason, admin)
 	name = name or ""
 
 	local promise = queries["Ban Player"]
-		:Prepare(config.dbprefix, ip, steamID, name, time, time + length, length, reason, adminID, adminIP,
-			config.serverid)
 		:SetCallbackArgs(name)
-		:Run()
+		:Run(ip, steamID, name, time, time + length, length, reason, adminID, adminIP,
+			config.serverid)
 
 	if config.showbanreason then
 		if reason and string.Trim(reason) == "" then
@@ -919,7 +912,6 @@ function sourcebans.GetAllActiveBans(callback)
 	end
 	return handleLegacyCallback(
 		queries["Get All Active Bans"]
-		:Prepare(config.dbprefix)
 		:Run()
 		:Then(activeBansDataTransform),
 		callback
@@ -960,9 +952,8 @@ function sourcebans.GetActiveBans(pageNum, numPerPage, callback)
 	local offset = ((pageNum - 1) * numPerPage)
 	return handleLegacyCallback(
 		queries["Get Active Bans"]
-		:Prepare(config.dbprefix, numPerPage, offset)
 		:SetCallbackArgs(pageNum)
-		:Run()
+		:Run(numPerPage, offset)
 		:Then(activeBansDataTransform),
 		callback
 	)
@@ -987,6 +978,9 @@ function sourcebans.SetConfig(key, value)
 	if dbConfig[key] then
 		db:SetConnectionParameter(dbConfig[key], value)
 	end
+	if key == "dbprefix" and db then
+		setupQueries()
+	end
 end
 
 --- No longer required
@@ -1007,9 +1001,8 @@ function sourcebans.CheckForBan(steamID, callback)
 	end
 	return handleLegacyCallback(
 		queries["Check for Bans by SteamID"]
-		:Prepare(config.dbprefix, steamID)
 		:SetCallbackArgs(steamID)
-		:Run()
+		:Run(steamID)
 		:Then(function(results) return #results > 0; end),
 		callback
 	)

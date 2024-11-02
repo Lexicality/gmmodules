@@ -88,13 +88,7 @@ local dbConfig = {
 	portnumb = "Port",
 }
 
-local db = database.NewDatabase({
-	Hostname = config.hostname,
-	Username = config.username,
-	Password = config.password,
-	Database = config.database,
-	Port     = config.portnumb,
-})
+local db
 
 --[[ Automatic IP Locator ]] --
 local serverport = GetConVarNumber("hostport")
@@ -134,7 +128,7 @@ local adminsByID
 local adminGroups
 
 --- @enum (keys) sourcebans._queriesa
-local _queries = {
+local rawQueries = {
 	-- BanChkr
 	["Check for Bans"] = [[--sql
 		SELECT
@@ -463,103 +457,106 @@ local function doAnError(callback, reason)
 end
 ---@return boolean
 local function isActive()
-	return db:IsConnected()
+	return db and db:IsConnected()
 end
 
 --[[ Set up Queries ]] --
 
 --- @type table<string, database.PreparedQuery>
 local queries = {}
-for key, qtext in pairs(_queries) do
-	queries[key] = db:PrepareQuery(qtext)
-end
 
-queries["Check for Bans"]:SetCallbacks({
-	Progress = function(data, name, steamID)
-		-- TODO: Reason, time left
-		notifymessage(name, " has been identified as ", data.name, ", who is banned. Kicking ... ")
-		kickid(steamID)
-		banid(steamID)
-		queries["Log Join Attempt"]
-			:Prepare(config.dbprefix, config.serverid, os.time(), name, data.bid)
-			:SetCallbackArgs(name)
-			:Run()
-	end,
-	Fail = errCallback("check %s's ban status"),
-})
-queries["Check for Bans by SteamID"]:SetCallbacks({
-	Fail = errCallback("check %s's ban status"),
-})
-queries["Get All Active Bans"]:SetCallbacks({
-	Fail = errCallback("acquire every ban ever"),
-})
-queries["Get Active Bans"]:SetCallbacks({
-	Fail = errCallback("acquire page #%d of bans"),
-})
-queries["Log Join Attempt"]:SetCallbacks({
-	Fail = errCallback("store %s's foiled join attempt"),
-})
-queries["Look up serverID"]:SetCallbacks({
-	Progress = function(data)
-		config.serverid = data.sid
-	end,
-	Fail = errCallback("lookup the server's ID"),
-})
-queries["Select Admin Groups"]:SetCallbacks({
-	Done = function(data)
-		for _, data in pairs(data) do
-			adminGroups[data.name] = data
-			notifymessage("Loaded admin group ", data.name)
-		end
-		notifymessage("Loading Admins . . .")
-		queries["Select Admins"]
-			:Prepare(config.dbprefix, config.dbprefix, config.serverid)
-			:Run()
-	end,
-	Fail = errCallback("load admin groups"),
-})
-queries["Select Admins"]:SetCallbacks({
-	Done = function()
-		notifymessage("Finished loading admins!")
-		for _, ply in pairs(player.GetAll()) do
-			local info = admins[ply:SteamID()]
-			if info then
-				if config.dogroups then
-					ply:SetUserGroup(string.lower(info.srv_group))
+local function setupQueries()
+	for key, qtext in pairs(rawQueries) do
+		queries[key] = db:PrepareQuery(qtext)
+	end
+
+	queries["Check for Bans"]:SetCallbacks({
+		Progress = function(data, name, steamID)
+			-- TODO: Reason, time left
+			notifymessage(name, " has been identified as ", data.name, ", who is banned. Kicking ... ")
+			kickid(steamID)
+			banid(steamID)
+			queries["Log Join Attempt"]
+				:Prepare(config.dbprefix, config.serverid, os.time(), name, data.bid)
+				:SetCallbackArgs(name)
+				:Run()
+		end,
+		Fail = errCallback("check %s's ban status"),
+	})
+	queries["Check for Bans by SteamID"]:SetCallbacks({
+		Fail = errCallback("check %s's ban status"),
+	})
+	queries["Get All Active Bans"]:SetCallbacks({
+		Fail = errCallback("acquire every ban ever"),
+	})
+	queries["Get Active Bans"]:SetCallbacks({
+		Fail = errCallback("acquire page #%d of bans"),
+	})
+	queries["Log Join Attempt"]:SetCallbacks({
+		Fail = errCallback("store %s's foiled join attempt"),
+	})
+	queries["Look up serverID"]:SetCallbacks({
+		Progress = function(data)
+			config.serverid = data.sid
+		end,
+		Fail = errCallback("lookup the server's ID"),
+	})
+	queries["Select Admin Groups"]:SetCallbacks({
+		Done = function(data)
+			for _, data in pairs(data) do
+				adminGroups[data.name] = data
+				notifymessage("Loaded admin group ", data.name)
+			end
+			notifymessage("Loading Admins . . .")
+			queries["Select Admins"]
+				:Prepare(config.dbprefix, config.dbprefix, config.serverid)
+				:Run()
+		end,
+		Fail = errCallback("load admin groups"),
+	})
+	queries["Select Admins"]:SetCallbacks({
+		Done = function()
+			notifymessage("Finished loading admins!")
+			for _, ply in pairs(player.GetAll()) do
+				local info = admins[ply:SteamID()]
+				if info then
+					if config.dogroups then
+						ply:SetUserGroup(string.lower(info.srv_group))
+					end
+					ply.sourcebansinfo = info
+					notifymessage(ply:Name() .. " is now a " .. info.srv_group .. "!")
 				end
-				ply.sourcebansinfo = info
-				notifymessage(ply:Name() .. " is now a " .. info.srv_group .. "!")
 			end
-		end
-	end,
-	Data = function(data)
-		data.srv_group = data.srv_group or "NO GROUP ASSIGNED"
-		data.srv_flags = data.srv_flags or ""
-		local group = adminGroups[data.srv_group]
-		if group then
-			data.srv_flags = data.srv_flags .. (group.flags or "")
-			if data.immunity < group.immunity then
-				data.immunity = group.immunity
+		end,
+		Data = function(data)
+			data.srv_group = data.srv_group or "NO GROUP ASSIGNED"
+			data.srv_flags = data.srv_flags or ""
+			local group = adminGroups[data.srv_group]
+			if group then
+				data.srv_flags = data.srv_flags .. (group.flags or "")
+				if data.immunity < group.immunity then
+					data.immunity = group.immunity
+				end
 			end
-		end
-		if string.find(data.srv_flags, "z") then
-			data.zflag = true
-		end
-		admins[data.authid] = data
-		adminsByID[data.aid] = data
-		notifymessage("Loaded admin ", data.user, " with group ", tostring(data.srv_group), ".")
-	end,
-	Fail = errCallback("load admins"),
-})
-queries["Ban Player"]:SetCallbacks({
-	Fail = errCallback("Ban %s"),
-})
-queries["Unban SteamID"]:SetCallbacks({
-	Fail = errCallback("Unban SteamID %s"),
-})
-queries["Unban IPAddress"]:SetCallbacks({
-	Fail = errCallback("Unban IP %s"),
-})
+			if string.find(data.srv_flags, "z") then
+				data.zflag = true
+			end
+			admins[data.authid] = data
+			adminsByID[data.aid] = data
+			notifymessage("Loaded admin ", data.user, " with group ", tostring(data.srv_group), ".")
+		end,
+		Fail = errCallback("load admins"),
+	})
+	queries["Ban Player"]:SetCallbacks({
+		Fail = errCallback("Ban %s"),
+	})
+	queries["Unban SteamID"]:SetCallbacks({
+		Fail = errCallback("Unban SteamID %s"),
+	})
+	queries["Unban IPAddress"]:SetCallbacks({
+		Fail = errCallback("Unban IP %s"),
+	})
+end
 
 -- Functions --
 
@@ -770,6 +767,14 @@ function sourcebans.Activate()
 	end
 	activated = true
 	notifymessage("Starting the database.")
+	db = database.NewDatabase({
+		Hostname = config.hostname,
+		Username = config.username,
+		Password = config.password,
+		Database = config.database,
+		Port     = config.portnumb,
+	})
+	setupQueries()
 	return startDatabase()
 end
 

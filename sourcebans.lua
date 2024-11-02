@@ -138,73 +138,73 @@ local _queries = {
 	-- BanChkr
 	["Check for Bans"] = [[--sql
 		SELECT
-			bid,
-			name,
-			ends,
-			authid,
-			ip
+			`bid`,
+			`name`,
+			`ends`,
+			`authid`,
+			`ip`
 		FROM
-			%s_bans
+			`%s_bans`
 		WHERE
 			(
-				length = 0
-				OR ends > UNIX_TIMESTAMP()
+				`length` = 0
+				OR `ends` > UNIX_TIMESTAMP()
 			)
-			AND removetype IS NULL
+			AND `removetype` IS NULL
 			AND (
-				authid = '%s'
-				OR ip = '%s'
+				`authid` = '%s'
+				OR `ip` = '%s'
 			)
 		LIMIT 1
 	]],
 	-- ["Check for Bans by IP"] = [[--sql
 	--     SELECT
-	--         bid,
-	--         name,
-	--         ends,
-	--         authid,
-	--         ip
+	--         `bid`,
+	--         `name`,
+	--         `ends`,
+	--         `authid`,
+	--         `ip`
 	--     FROM
-	--         %s_bans
+	--         `%s_bans`
 	--     WHERE
 	--         (
-	--             length = 0
-	--             OR ends > UNIX_TIMESTAMP()
+	--             `length` = 0
+	--             OR `ends` > UNIX_TIMESTAMP()
 	--         )
-	--         AND removetype IS NULL
-	--         AND ip = '%s'
+	--         AND `removetype` IS NULL
+	--         AND `ip` = '%s'
 	--     LIMIT 1
 	-- ]],
 	["Check for Bans by SteamID"] = [[--sql
 		SELECT
-			bid,
-			name,
-			ends,
-			authid,
-			ip
+			`bid`,
+			`name`,
+			`ends`,
+			`authid`,
+			`ip`
 		FROM
-			%s_bans
+			`%s_bans`
 		WHERE
 			(
-				length = 0
-				OR ends > UNIX_TIMESTAMP()
+				`length` = 0
+				OR `ends` > UNIX_TIMESTAMP()
 			)
-			AND removetype IS NULL
-			AND authid = '%s'
+			AND `removetype` IS NULL
+			AND `authid` = '%s'
 		LIMIT 1
 	]],
 	["Get All Active Bans"] = [[--sql
 		SELECT
-			ip,
-			authid,
-			name,
-			created,
-			ends,
-			length,
-			reason,
-			aid
+			`ip`,
+			`authid`,
+			`name`,
+			`created`,
+			`ends`,
+			`length`,
+			`reason`,
+			`aid`
 		FROM
-			%s_bans
+			`%s_bans`
 		WHERE
 			(
 				length = 0
@@ -214,16 +214,16 @@ local _queries = {
 	]],
 	["Get Active Bans"] = [[--sql
 		SELECT
-			ip,
-			authid,
-			name,
-			created,
-			ends,
-			length,
-			reason,
-			aid
+			`ip`,
+			`authid`,
+			`name`,
+			`created`,
+			`ends`,
+			`length`,
+			`reason`,
+			`aid`
 		FROM
-			%s_bans
+			`%s_bans`
 		WHERE
 			(
 				length = 0
@@ -237,10 +237,10 @@ local _queries = {
 	["Log Join Attempt"] = [[--sql
 		INSERT INTO `%s_banlog`
 		(
-			sid,
-			time,
-			name,
-			bid
+			`sid`,
+			`time`,
+			`name`,
+			`bid`
 		)
 		VALUES (
 			%i,
@@ -253,56 +253,56 @@ local _queries = {
 	-- Admins
 	["Select Admin Groups"] = [[--sql
 		SELECT
-			flags,
-			immunity,
-			name
+			`flags`,
+			`immunity`,
+			`name`
 		FROM
-			%s_srvgroups
+			`%s_srvgroups`
 		]],
 	["Select Admins"] = [[--sql
 		SELECT
-			a.aid,
-			a.user,
-			a.authid,
-			a.srv_group,
-			a.srv_flags,
-			a.immunity
+			`a`.`aid`,
+			`a`.`user`,
+			`a`.`authid`,
+			`a`.`srv_group`,
+			`a`.`srv_flags`,
+			`a`.`immunity`
 		FROM
-			%s_admins a,
-			%s_admins_servers_groups g
+			`%s_admins` AS `a`,
+			`%s_admins_servers_groups` AS `g`
 		WHERE
-			g.server_id = %i
-			AND g.admin_id = a.aid
+			`g`.`server_id` = %i
+			AND `g`.`admin_id` = `a`.`aid`
 	]],
 
 	-- Misc
 	["Look up serverID"] = [[--sql
 		SELECT
-			sid
+			`sid`
 		FROM
-			%s_servers
+			`%s_servers`
 		WHERE
-			ip = '%s'
-			AND port = '%s'
+			`ip` = '%s'
+			AND `port` = '%s'
 		LIMIT 1
 	]],
 
 	-- Bannin
 	["Ban Player"] = [[--sql
 		INSERT INTO
-			%s_bans
+			`%s_bans`
 		(
-			ip,
-			authid,
-			name,
-			created,
-			ends,
-			length,
-			reason,
-			aid,
-			adminIp,
-			sid,
-			country
+			`ip`,
+			`authid`,
+			`name`,
+			`created`,
+			`ends`,
+			`length`,
+			`reason`,
+			`aid`,
+			`adminIp`,
+			`sid`,
+			`country`
 		)
 		VALUES
 		(
@@ -322,35 +322,35 @@ local _queries = {
 	-- Unbannin
 	["Unban SteamID"] = [[--sql
 		UPDATE
-			%s_bans
+			`%s_bans`
 		SET
-			RemovedBy = %i,
-			RemoveType = 'U',
-			RemovedOn = UNIX_TIMESTAMP(),
-			ureason = '%s'
+			`RemovedBy` = %i,
+			`RemoveType` = 'U',
+			`RemovedOn` = UNIX_TIMESTAMP(),
+			`ureason` = '%s'
 		WHERE
 			(
-				length = 0
-				OR ends > UNIX_TIMESTAMP()
+				`length` = 0
+				OR `ends` > UNIX_TIMESTAMP()
 			)
-			AND removetype IS NULL
-			AND authid = '%s'
+			AND `removetype` IS NULL
+			AND `authid` = '%s'
 	]],
 	["Unban IPAddress"] = [[--sql
 		UPDATE
-			%s_bans
+			`%s_bans`
 		SET
-			RemovedBy = %i,
-			RemoveType = 'U',
-			RemovedOn = UNIX_TIMESTAMP(),
-			ureason = '%s'
+			`RemovedBy` = %i,
+			`RemoveType` = 'U',
+			`RemovedOn` = UNIX_TIMESTAMP(),
+			`ureason` = '%s'
 		WHERE
 		(
-			length = 0
-			OR ends > UNIX_TIMESTAMP()
+			`length` = 0
+			OR `ends` > UNIX_TIMESTAMP()
 		)
-		AND removetype IS NULL
-		AND ip = '%s'
+		AND `removetype` IS NULL
+		AND `ip` = '%s'
 	]],
 }
 local idLookup = {}

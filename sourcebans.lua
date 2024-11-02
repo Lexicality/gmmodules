@@ -561,15 +561,12 @@ queries["Unban IPAddress"]:SetCallbacks({
 	Fail = errCallback("Unban IP %s"),
 })
 
---[[ Query Functions ]] --
-local startDatabase, checkBan, loadAdmins, doBan, doUnban
-
 -- Functions --
 
 --- See if a player is banned and kick/ban them if they are.
 --- @param ply GPlayer The player
 --- @return Promise
-function checkBan(ply) -- steamID, ip, name )
+local function checkBan(ply) -- steamID, ip, name )
 	local steamID = ply:SteamID()
 	return queries["Check for Bans"]
 		:Prepare(config.dbprefix, steamID, getIP(ply))
@@ -578,7 +575,7 @@ function checkBan(ply) -- steamID, ip, name )
 end
 
 ---@return Promise
-function loadAdmins()
+local function loadAdmins()
 	if not isActive() then
 		error("Not activated yet!", 2)
 	end
@@ -595,7 +592,7 @@ end
 
 ---@param deferred? Deferred
 ---@return Promise
-function startDatabase(deferred)
+local function startDatabase(deferred)
 	-- I don't see how but it might I guess
 	if isActive() then
 		if deferred then
@@ -632,7 +629,7 @@ end
 ---@param reason string
 ---@param admin? GPlayer
 ---@return Promise
-function doUnban(query, id, reason, admin)
+local function doUnban(query, id, reason, admin)
 	local aid = getAdminDetails(admin)
 	return query
 		:Prepare(config.dbprefix, aid, reason, id)
@@ -647,7 +644,7 @@ end
 ---@param reason? string
 ---@param admin? GPlayer
 ---@return Promise
-function doBan(steamID, ip, name, length, reason, admin)
+local function doBan(steamID, ip, name, length, reason, admin)
 	local time = os.time()
 	local adminID, adminIP = getAdminDetails(admin)
 	name = name or ""

@@ -27,6 +27,7 @@ indent_style = space
 trim_trailing_whitespace = false
 
 [*.lua]
+indent_style = tab
 # EmmyLuaCodeStyle config
 
 # Highly changable personal vibes
